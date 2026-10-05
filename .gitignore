@@ -1,0 +1,18 @@
+intel-image-classification/
+intel-image-classification.zip
+
+# Local datasets
+data/*
+!data/.gitkeep
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
