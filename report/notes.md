@@ -19,3 +19,9 @@ The experiment shows the trade-off of frequency-domain smoothing. A small cutoff
 The high-pass filter was tested with cutoff radii of 10, 20 and 35 pixels. At radius 10, broad outlines and much of the building texture are still visible. At radius 20, smooth areas become darker and the edges of windows, railings, columns and overhead wires become clearer. At radius 35, mostly fine details and sharp edges remain, while larger shapes are less visible.
 
 Edges are highlighted because they contain quick changes between light and dark pixels. These changes are represented by high spatial frequencies. Removing low frequencies reduces smooth areas and the overall brightness of the image. The results therefore look more like edge maps than sharpened versions of the original image. The filter can also make noise more visible, and the sharp cutoff can create faint ripples near strong edges.
+
+**Fourier compression**
+
+The reconstruction made with 1% of the coefficients keeps the rough shape of the building, but it is heavily blurred and has visible line patterns. At 5% and 10%, the floors, roof and window layout become clearer. The main structure is easy to recognize at these percentages, although many small details are still missing. At 20%, most of the building structure is preserved. At 50%, railings, windows and other fine edges are much closer to the original. Keeping 100% gives the original image back, with a reported MSE of 0.00.
+
+Keeping more coefficients improves the image and lowers the MSE, but it also reduces the amount of theoretical compression. The reported ratio only compares the total number of Fourier coefficients with the number retained. It is not a file-size ratio. A real compressed file would also need to store coefficient positions and values, along with file information and encoding overhead.

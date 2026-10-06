@@ -30,6 +30,12 @@ low_pass_output_path = (
 high_pass_output_path = (
     project_root / "results" / "fourier" / "high_pass_comparison.png"
 )
+compression_output_path = (
+    project_root / "results" / "fourier" / "compression_comparison.png"
+)
+compression_metrics_output_path = (
+    project_root / "results" / "fourier" / "compression_metrics.png"
+)
 
 image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
 
@@ -142,4 +148,88 @@ for axis in high_pass_axes:
 high_pass_figure.tight_layout()
 high_pass_figure.savefig(high_pass_output_path, dpi=150, bbox_inches="tight")
 print(f"High-pass comparison saved to: {high_pass_output_path}")
+
+retained_percentages = [1, 5, 10, 20, 50, 100]
+total_coefficients = fourier_transform.size
+flat_transform = fourier_transform.ravel()
+coefficient_order = np.argsort(np.abs(flat_transform))[::-1]
+
+reconstructed_images = []
+mse_values = []
+compression_ratios = []
+
+for percentage in retained_percentages:
+    retained_count = max(
+        1, round(total_coefficients * percentage / 100)
+    )
+    retained_indices = coefficient_order[:retained_count]
+
+    compressed_coefficients = np.zeros_like(flat_transform)
+    compressed_coefficients[retained_indices] = flat_transform[retained_indices]
+    compressed_transform = compressed_coefficients.reshape(image.shape)
+
+    reconstructed_image = np.real(np.fft.ifft2(compressed_transform))
+    mse = np.mean((image.astype(float) - reconstructed_image) ** 2)
+    compression_ratio = total_coefficients / retained_count
+
+    reconstructed_images.append(reconstructed_image)
+    mse_values.append(mse)
+    compression_ratios.append(compression_ratio)
+
+compression_figure, compression_axes = plt.subplots(2, 4, figsize=(12, 6))
+compression_axes = compression_axes.ravel()
+
+compression_axes[0].imshow(image, cmap="gray", vmin=0, vmax=255)
+compression_axes[0].set_title("Original")
+
+for axis, percentage, reconstructed_image in zip(
+    compression_axes[1:], retained_percentages, reconstructed_images
+):
+    axis.imshow(
+        np.clip(reconstructed_image, 0, 255),
+        cmap="gray",
+        vmin=0,
+        vmax=255,
+    )
+    axis.set_title(f"{percentage}% retained")
+
+for axis in compression_axes:
+    axis.axis("off")
+
+compression_figure.tight_layout()
+compression_figure.savefig(
+    compression_output_path, dpi=150, bbox_inches="tight"
+)
+
+metrics_figure, metrics_axis = plt.subplots(figsize=(6, 3))
+metrics_axis.axis("off")
+table_rows = [
+    [f"{percentage}%", f"{mse:.2f}", f"{ratio:.1f}:1"]
+    for percentage, mse, ratio in zip(
+        retained_percentages, mse_values, compression_ratios
+    )
+]
+metrics_table = metrics_axis.table(
+    cellText=table_rows,
+    colLabels=["Coefficients retained", "MSE", "Theoretical ratio"],
+    cellLoc="center",
+    loc="center",
+)
+metrics_table.auto_set_font_size(False)
+metrics_table.set_fontsize(10)
+metrics_table.scale(1, 1.4)
+metrics_axis.set_title("Fourier compression metrics")
+metrics_figure.tight_layout()
+metrics_figure.savefig(
+    compression_metrics_output_path, dpi=150, bbox_inches="tight"
+)
+
+print(f"Compression comparison saved to: {compression_output_path}")
+print(f"Compression metrics saved to: {compression_metrics_output_path}")
+print("Theoretical ratios count coefficients, not file size on disk.")
+for percentage, mse, ratio in zip(
+    retained_percentages, mse_values, compression_ratios
+):
+    print(f"{percentage:>3}% retained: MSE={mse:.2f}, ratio={ratio:.1f}:1")
+
 plt.show()
