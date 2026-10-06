@@ -13,6 +13,7 @@ def circular_low_pass_mask(shape, cutoff_radius):
     return distance_squared <= cutoff_radius**2
 
 
+# Shared setup
 project_root = Path(__file__).resolve().parents[1]
 image_path = (
     project_root
@@ -45,6 +46,7 @@ if image is None:
 height, width = image.shape
 print(f"Image dimensions: {height} x {width} pixels")
 
+# Task 1: Fourier magnitude spectrum
 # Transform the image to the frequency domain and center low frequencies.
 fourier_transform = np.fft.fft2(image)
 shifted_transform = np.fft.fftshift(fourier_transform)
@@ -67,6 +69,7 @@ output_path.parent.mkdir(parents=True, exist_ok=True)
 figure.savefig(output_path, dpi=150, bbox_inches="tight")
 print(f"Figure saved to: {output_path}")
 
+# Task 2: Low-pass filtering
 random_seed = 42
 noise_mean = 0
 noise_standard_deviation = 25
@@ -117,6 +120,7 @@ print(
 print(f"Cutoff radii: {cutoff_radii}")
 print(f"Low-pass comparison saved to: {low_pass_output_path}")
 
+# Task 3: High-pass filtering
 high_pass_images = []
 for radius in cutoff_radii:
     mask = ~circular_low_pass_mask(image.shape, radius)
@@ -149,6 +153,7 @@ high_pass_figure.tight_layout()
 high_pass_figure.savefig(high_pass_output_path, dpi=150, bbox_inches="tight")
 print(f"High-pass comparison saved to: {high_pass_output_path}")
 
+# Task 4: Fourier compression
 retained_percentages = [1, 5, 10, 20, 50, 100]
 total_coefficients = fourier_transform.size
 flat_transform = fourier_transform.ravel()
