@@ -8,6 +8,7 @@ import numpy as np
 project_root = Path(__file__).resolve().parents[1]
 image_path = (
     project_root
+    / "data"
     / "intel-image-classification"
     / "seg_train"
     / "seg_train"
