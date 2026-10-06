@@ -13,3 +13,9 @@ Gaussian noise was added to the grayscale image before filtering so that the eff
 A cutoff radius of 10 removed a large amount of the noise, but also removed most fine image structure. The building remained recognizable, but windows, railings and sharp edges were heavily blurred. Increasing the radius to 20 restored more structural detail while still reducing much of the noise. At radius 35, the original structure was preserved more clearly, but more high-frequency noise was also retained.
 
 The experiment shows the trade-off of frequency-domain smoothing. A small cutoff gives stronger noise suppression but also removes useful detail, while a larger cutoff preserves more image information at the cost of weaker noise removal. The filter cannot distinguish between unwanted high-frequency noise and genuine high-frequency structures such as edges, since both occupy similar parts of the frequency spectrum.
+
+**High-pass filtering**
+
+The high-pass filter was tested with cutoff radii of 10, 20 and 35 pixels. At radius 10, broad outlines and much of the building texture are still visible. At radius 20, smooth areas become darker and the edges of windows, railings, columns and overhead wires become clearer. At radius 35, mostly fine details and sharp edges remain, while larger shapes are less visible.
+
+Edges are highlighted because they contain quick changes between light and dark pixels. These changes are represented by high spatial frequencies. Removing low frequencies reduces smooth areas and the overall brightness of the image. The results therefore look more like edge maps than sharpened versions of the original image. The filter can also make noise more visible, and the sharp cutoff can create faint ripples near strong edges.

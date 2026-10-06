@@ -27,6 +27,9 @@ output_path = project_root / "results" / "fourier" / "fourier_spectrum.png"
 low_pass_output_path = (
     project_root / "results" / "fourier" / "low_pass_comparison.png"
 )
+high_pass_output_path = (
+    project_root / "results" / "fourier" / "high_pass_comparison.png"
+)
 
 image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
 
@@ -107,4 +110,36 @@ print(
 )
 print(f"Cutoff radii: {cutoff_radii}")
 print(f"Low-pass comparison saved to: {low_pass_output_path}")
+
+high_pass_images = []
+for radius in cutoff_radii:
+    mask = ~circular_low_pass_mask(image.shape, radius)
+    filtered_transform = shifted_transform * mask
+
+    filtered_image = np.fft.ifft2(np.fft.ifftshift(filtered_transform))
+    high_pass_images.append(np.abs(filtered_image))
+
+high_pass_figure, high_pass_axes = plt.subplots(1, 4, figsize=(13, 4))
+
+high_pass_axes[0].imshow(image, cmap="gray", vmin=0, vmax=255)
+high_pass_axes[0].set_title("Original")
+
+high_pass_display_limit = max(
+    np.percentile(filtered_image, 99) for filtered_image in high_pass_images
+)
+
+for axis, radius, filtered_image in zip(
+    high_pass_axes[1:], cutoff_radii, high_pass_images
+):
+    axis.imshow(
+        filtered_image, cmap="gray", vmin=0, vmax=high_pass_display_limit
+    )
+    axis.set_title(f"High-pass, radius {radius}")
+
+for axis in high_pass_axes:
+    axis.axis("off")
+
+high_pass_figure.tight_layout()
+high_pass_figure.savefig(high_pass_output_path, dpi=150, bbox_inches="tight")
+print(f"High-pass comparison saved to: {high_pass_output_path}")
 plt.show()
