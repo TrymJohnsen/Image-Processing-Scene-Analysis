@@ -18,6 +18,8 @@ output_path = project_root / "results" / "fourier" / "fourier_spectrum.png"
 
 image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
 
+if image is None:
+    raise FileNotFoundError(f"Could not load image: {image_path}")
 
 height, width = image.shape
 print(f"Image dimensions: {height} x {width} pixels")
