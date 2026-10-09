@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 import cv2
@@ -8,6 +9,7 @@ import numpy as np
 IMAGE_SIZE = (64, 64)
 NUMBER_OF_IMAGES = 200
 RANDOM_SEED = 42
+TESTED_COMPONENT_COUNTS = [1, 5, 10, 25, 50, 100, 150]
 
 
 def load_images(image_directory, number_of_images, image_size):
@@ -74,6 +76,10 @@ def project(centered_data, components, number_of_components):
     return centered_data @ components[:number_of_components].T
 
 
+def reconstruct(projected_data, components, mean_image):
+    return projected_data @ components[: projected_data.shape[1]] + mean_image
+
+
 def save_mean_image(mean_image, image_shape, output_directory):
     figure, axis = plt.subplots(figsize=(4, 4))
     axis.imshow(mean_image.reshape(image_shape), cmap="gray", vmin=0, vmax=1)
@@ -107,6 +113,129 @@ def save_explained_variance(explained_variance_ratio, output_directory):
     figure.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(figure)
     print(f"Explained variance plot saved to: {output_path}")
+
+
+def evaluate_reconstructions(
+    data_matrix,
+    centered_data,
+    mean_image,
+    components,
+    explained_variance_ratio,
+    component_counts,
+):
+    cumulative_variance = np.cumsum(explained_variance_ratio)
+    reconstructions = {}
+    metrics = []
+
+    for component_count in component_counts:
+        projected_data = project(centered_data, components, component_count)
+        reconstructed_data = reconstruct(
+            projected_data, components, mean_image
+        )
+        mse = np.mean((data_matrix - reconstructed_data) ** 2)
+        reconstructions[component_count] = reconstructed_data
+        metrics.append(
+            (
+                component_count,
+                cumulative_variance[component_count - 1],
+                mse,
+            )
+        )
+
+    return reconstructions, metrics
+
+
+def save_reconstruction_comparison(
+    data_matrix,
+    reconstructions,
+    image_shape,
+    component_counts,
+    output_directory,
+):
+    displayed_counts = [1, 10, 50, 100, component_counts[-1]]
+    image_indices = [0, len(data_matrix) // 2, len(data_matrix) - 1]
+    figure, axes = plt.subplots(
+        len(image_indices),
+        len(displayed_counts) + 1,
+        figsize=(12, 6),
+    )
+
+    for row, image_index in enumerate(image_indices):
+        axes[row, 0].imshow(
+            data_matrix[image_index].reshape(image_shape),
+            cmap="gray",
+            vmin=0,
+            vmax=1,
+        )
+        axes[row, 0].set_title("Original" if row == 0 else "")
+
+        for column, component_count in enumerate(displayed_counts, start=1):
+            reconstructed_image = reconstructions[component_count][image_index]
+            axes[row, column].imshow(
+                np.clip(reconstructed_image.reshape(image_shape), 0, 1),
+                cmap="gray",
+                vmin=0,
+                vmax=1,
+            )
+            axes[row, column].set_title(
+                f"k = {component_count}" if row == 0 else ""
+            )
+
+    for axis in axes.ravel():
+        axis.axis("off")
+
+    figure.suptitle("Original and PCA-reconstructed building images")
+    figure.tight_layout()
+    output_path = output_directory / "reconstruction_comparison.png"
+    figure.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(figure)
+    print(f"Reconstruction comparison saved to: {output_path}")
+
+
+def save_reconstruction_error(metrics, output_directory):
+    component_counts = [row[0] for row in metrics]
+    mse_values = [row[2] for row in metrics]
+
+    figure, axis = plt.subplots(figsize=(7, 4))
+    axis.plot(component_counts, mse_values, marker="o", color="tab:red")
+    axis.set(
+        xlabel="Number of principal components (k)",
+        ylabel="Mean squared error",
+        title="PCA reconstruction error",
+    )
+    axis.grid(alpha=0.25)
+    figure.tight_layout()
+    output_path = output_directory / "reconstruction_error.png"
+    figure.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(figure)
+    print(f"Reconstruction error plot saved to: {output_path}")
+
+
+def save_metrics(metrics, pixel_count, output_directory):
+    output_path = output_directory / "metrics.csv"
+    with output_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(
+            ["k", "cumulative_explained_variance", "mse", "pixel_reduction"]
+        )
+        for component_count, cumulative_variance, mse in metrics:
+            writer.writerow(
+                [
+                    component_count,
+                    f"{cumulative_variance:.6f}",
+                    f"{mse:.8f}",
+                    f"{pixel_count / component_count:.2f}:1",
+                ]
+            )
+
+    print(f"Metrics saved to: {output_path}")
+    print("\n  k | cumulative variance |        MSE | pixel reduction")
+    print("----|---------------------|------------|----------------")
+    for component_count, cumulative_variance, mse in metrics:
+        print(
+            f"{component_count:>3} | {cumulative_variance:>19.4f} | "
+            f"{mse:>10.6f} | {pixel_count / component_count:>10.2f}:1"
+        )
 
 
 def main():
@@ -154,6 +283,30 @@ def main():
 
     save_mean_image(mean_image, image_shape, output_directory)
     save_explained_variance(explained_variance_ratio, output_directory)
+
+    component_counts = TESTED_COMPONENT_COUNTS + [len(components)]
+    reconstructions, metrics = evaluate_reconstructions(
+        data_matrix,
+        centered_data,
+        mean_image,
+        components,
+        explained_variance_ratio,
+        component_counts,
+    )
+    mse_values = np.array([row[2] for row in metrics])
+    cumulative_variances = np.array([row[1] for row in metrics])
+    assert np.all(np.diff(mse_values) <= 1e-12)
+    assert np.all(np.diff(cumulative_variances) >= 0)
+
+    save_reconstruction_comparison(
+        data_matrix,
+        reconstructions,
+        image_shape,
+        component_counts,
+        output_directory,
+    )
+    save_reconstruction_error(metrics, output_directory)
+    save_metrics(metrics, data_matrix.shape[1], output_directory)
 
 
 if __name__ == "__main__":
