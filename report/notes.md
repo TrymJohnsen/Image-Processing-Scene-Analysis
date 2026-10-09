@@ -46,11 +46,11 @@ The theoretical compression ratio only compares the total number of Fourier coef
 
 ## Principal Component Analysis
 
-The PCA experiment used 200 images from the buildings category of the Intel training set. This category was selected because no facial-emotion dataset was available locally. Using one category also gives a coherent set with recurring structures such as façades, roofs, windows and sky, while retaining variation in viewpoint, shape and lighting that PCA can model.
+The PCA experiment used 200 images from the buildings category of the Intel training set, and PCA was fitted using all 200 images. This category was selected because no facial-emotion dataset was available locally. Using one category also gives a coherent set with recurring structures such as façades, roofs, windows and sky, while retaining variation in viewpoint, shape and lighting that PCA can model.
 
 ### PCA representation
 
-Each image was converted to grayscale, resized to 64 × 64 pixels and normalized to the range [0, 1]. The images were then flattened so that each could be represented by one row of the data matrix. The resulting matrix had 200 rows for images and 4096 columns for pixel values. Normalization gives every pixel a consistent scale. The mean image was subtracted before PCA so that the analysis describes variation around the average building image instead of overall brightness levels.
+Each image was converted to grayscale, resized to 64 × 64 pixels and normalized to the range [0, 1]. The images were then flattened so that each could be represented by one row of the data matrix. Before dimensionality reduction, each image therefore had 4096 pixel values, and the resulting matrix had 200 rows for images and 4096 columns for pixels. Normalization gives every pixel a consistent scale. The mean image is the pixel-wise average of all 200 images. It appears blurred because the buildings, roofs, sky regions and other structures are not spatially aligned across the dataset. The mean was subtracted before PCA so that the analysis describes variation around the average building image instead of overall brightness levels.
 
 ### Principal components
 
@@ -60,7 +60,7 @@ The image-space eigenvectors are directions of variation, while their eigenvalue
 
 ### Reconstruction experiment
 
-The reconstruction comparison shows that one component retains only broad light and dark regions, so the individual buildings are not identifiable. At *k* = 10, rough building positions and silhouettes return, but edges remain heavily blurred. At *k* = 50, the buildings, roof lines, windows and foreground boundaries are recognizable. The *k* = 100 reconstructions are visually close to the originals, although some fine texture and edge sharpness are still reduced. With all 199 meaningful components, the sampled training images are reproduced visually and the measured error is effectively zero.
+The reconstruction figure shows three representative examples from the 200 images used to fit PCA. Only three are shown to keep the comparison readable. One component retains only broad intensity structure, so the individual buildings are not identifiable. At *k* = 10, the coarse building layout returns, but edges remain heavily blurred. At *k* = 50, the buildings are recognizable but still visibly blurred. The *k* = 100 reconstructions are visually close to the originals, although some fine texture and edge sharpness are still reduced. With all 199 meaningful components, the training images are reconstructed with effectively zero MSE.
 
 ### Explained variance and reconstruction error
 
@@ -81,4 +81,4 @@ For this experiment, *k* = 50 to 100 is a useful range rather than a universally
 
 ### Dimensionality reduction
 
-Each resized image originally requires 4096 pixel values. After PCA, its dataset-specific representation requires *k* coefficients, so *k* = 100 reduces the per-image values by a factor of about 40.96. This is dimensionality reduction, not automatically the same as file compression. Reconstructing images also requires the shared PCA basis and mean image, and their storage cost would need to be included in any real compression calculation.
+The reported pixel reduction values compare the original 4096 pixel values per image with *k* PCA coefficients. For example, *k* = 100 reduces the per-image representation by a factor of about 40.96. These are not actual file compression ratios because reconstruction also requires the shared PCA basis and mean image. Their storage cost and other file overhead would need to be included in a real compression calculation.
