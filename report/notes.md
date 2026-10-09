@@ -43,3 +43,42 @@ The compression experiment keeps the Fourier coefficients with the largest magni
 The reconstruction error decreases as more coefficients are retained. At 1%, the building is still recognizable, but the image is heavily blurred and has visible line patterns. At 5% and 10%, the floors, roof and window layout become clearer, although fine details are still missing. Keeping 20% preserves most major structure while reducing the coefficient count by a factor of five, making it a useful compromise in this experiment. At 50%, the reconstruction is visually close to the original and many fine edges have returned. Keeping 100% reproduces the original image with a reported MSE of 0.00.
 
 The theoretical compression ratio only compares the total number of Fourier coefficients with the number retained. It is not the size of a compressed file. A real format would also need to store coefficient positions and values, as well as file information and encoding overhead.
+
+## Principal Component Analysis
+
+The PCA experiment used 200 images from the buildings category of the Intel training set. This category was selected because no facial-emotion dataset was available locally. Using one category also gives a coherent set with recurring structures such as façades, roofs, windows and sky, while retaining variation in viewpoint, shape and lighting that PCA can model.
+
+### PCA representation
+
+Each image was converted to grayscale, resized to 64 × 64 pixels and normalized to the range [0, 1]. The images were then flattened so that each could be represented by one row of the data matrix. The resulting matrix had 200 rows for images and 4096 columns for pixel values. Normalization gives every pixel a consistent scale. The mean image was subtracted before PCA so that the analysis describes variation around the average building image instead of overall brightness levels.
+
+### Principal components
+
+Covariance describes how intensity patterns vary together across this set of building images. Since there are far fewer images than pixels, covariance was computed in the 200 × 200 sample space instead of directly forming a 4096 × 4096 pixel covariance matrix. The resulting eigenvectors were mapped back into pixel space and normalized.
+
+The image-space eigenvectors are directions of variation, while their eigenvalues measure how much variation each direction captures. Sorting components by decreasing eigenvalue places the most informative directions first. An image can then be projected onto the first *k* components to obtain *k* PCA coefficients.
+
+### Reconstruction experiment
+
+The reconstruction comparison shows that one component retains only broad light and dark regions, so the individual buildings are not identifiable. At *k* = 10, rough building positions and silhouettes return, but edges remain heavily blurred. At *k* = 50, the buildings, roof lines, windows and foreground boundaries are recognizable. The *k* = 100 reconstructions are visually close to the originals, although some fine texture and edge sharpness are still reduced. With all 199 meaningful components, the sampled training images are reproduced visually and the measured error is effectively zero.
+
+### Explained variance and reconstruction error
+
+| k | Cumulative explained variance | MSE |
+|---:|---:|---:|
+| 1 | 0.2302 | 0.045410 |
+| 5 | 0.5045 | 0.029232 |
+| 10 | 0.5928 | 0.024022 |
+| 25 | 0.7211 | 0.016450 |
+| 50 | 0.8231 | 0.010436 |
+| 100 | 0.9231 | 0.004536 |
+| 150 | 0.9740 | 0.001536 |
+| 199 | 1.0000 | 0.000000 |
+
+Cumulative explained variance increases with *k* because each added component accounts for another direction of variation. MSE decreases because reconstruction takes place in a larger subspace and therefore discards less information. The largest early gains occur before *k* = 50, after which each additional component produces a smaller improvement.
+
+For this experiment, *k* = 50 to 100 is a useful range rather than a universally optimal choice. At *k* = 50, the representation retains 82.31% of the variance and the buildings are recognizable, but the reconstructions remain visibly soft. At *k* = 100, 92.31% of the variance is retained, MSE falls to 0.004536, and the reconstruction is visually close to the original. The appropriate point within this range depends on whether stronger dimensionality reduction or finer image detail matters more.
+
+### Dimensionality reduction
+
+Each resized image originally requires 4096 pixel values. After PCA, its dataset-specific representation requires *k* coefficients, so *k* = 100 reduces the per-image values by a factor of about 40.96. This is dimensionality reduction, not automatically the same as file compression. Reconstructing images also requires the shared PCA basis and mean image, and their storage cost would need to be included in any real compression calculation.
