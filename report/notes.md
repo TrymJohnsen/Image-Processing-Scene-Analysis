@@ -82,3 +82,15 @@ For this experiment, *k* = 50 to 100 is a useful range rather than a universally
 ### Dimensionality reduction
 
 The reported pixel reduction values compare the original 4096 pixel values per image with *k* PCA coefficients. For example, *k* = 100 reduces the per-image representation by a factor of about 40.96. These are not actual file compression ratios because reconstruction also requires the shared PCA basis and mean image. Their storage cost and other file overhead would need to be included in a real compression calculation.
+
+## HOG Features
+
+The experiment used `buildings/1001.jpg`, `street/10019.jpg` and `forest/10037.jpg`. Each image was converted to grayscale and resized to 128 × 128 pixels. The Sobel gradient magnitude shows where intensity changes are strongest. In the building and street images, bright gradient responses follow roof lines, windows, doors and façade boundaries. The forest response is denser because trunks, branches, leaves and the ground create edges across most of the image.
+
+HOG summarizes local edge directions by collecting gradient orientations within small cells. With the baseline settings of 9 orientations, 8 × 8 pixels per cell and 2 × 2 cells per block, the building produces repeated horizontal and vertical patterns. The street also has strong vertical edges, together with diagonals that follow the street perspective. The forest pattern is less regular, although the tree trunks still produce clear vertical responses.
+
+### Parameter experiment
+
+Smaller 4 × 4 cells preserve finer local changes, but increase the descriptor from 8100 to 34596 values. Larger 16 × 16 cells give a much coarser pattern and reduce it to 1764 values. Changing the block from 1 × 1 to 3 × 3 does not visibly change the line pattern in the scikit-image visualization because that image displays the cell histograms before block normalization. It does change how neighboring cells are grouped and normalized, and changes the descriptor size from 2304 to 15876 values.
+
+Using 6 orientation bins gives a coarser set of directions and 5400 descriptor values. With 12 bins, the direction sampling is finer and the descriptor grows to 10800 values, although the visual difference from 9 bins is modest in this image. Smaller cells, larger blocks and more orientation bins can describe more detail, but they also increase descriptor size and computation. The baseline keeps the main building structure clear without producing the largest descriptor.

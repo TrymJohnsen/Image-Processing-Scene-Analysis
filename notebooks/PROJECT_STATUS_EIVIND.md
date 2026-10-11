@@ -41,13 +41,22 @@ Dette er gjort:
 
 I dette eksperimentet er *k* = 50–100 et nyttig område. Ved *k* = 100 beholdes 92,31 % av variansen, og rekonstruksjonene er visuelt nær originalene. Rekonstruksjonsfiguren viser tre representative bilder for å være lesbar, men PCA er tilpasset med alle 200 bildene. De målte verdiene ligger i [`results/pca/metrics.csv`](../results/pca/metrics.csv).
 
+## HOG Features
+
+**Status:** Ferdig
+
+**Kode:** [`src/hog.py`](../src/hog.py)
+
+**Resultater:** [`results/hog/`](../results/hog/)
+
+Tre bilder og flere verdier for cellestørrelse, blokkstørrelse og antall orienteringer er testet.
+
 ## Rapport
 
 Arbeidsnotater og analyse ligger i [`report/notes.md`](../report/notes.md). Notatene bygges ut etter hver del og skal senere brukes som grunnlag for sluttrapporten. Dette er ikke ferdig rapporttekst ennå.
 
 ## Neste steg
 
-- HOG
 - LBP
 - Blob detection
 - Contour detection
