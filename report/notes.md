@@ -113,7 +113,9 @@ In the forest image the LBP response is dense across the whole frame. The trunks
 
 ### Histograms
 
-The histogram counts how often each of the 256 codes occurs. It describes which local patterns a texture is built from, but not where they are located. The bars are coloured by pattern type. A uniform pattern has at most two changes between 0 and 1 around the circle of neighbours, which corresponds to flat areas, spots, line ends, edges and corners. Only 58 of the 256 codes are uniform. The remaining codes describe irregular neighbourhoods.
+The histogram counts how often each of the 256 codes occurs. It describes which local patterns a texture is built from, but not where they are located. The bars are coloured by pattern type. A uniform pattern has at most two changes between 0 and 1 around the circle of neighbours, so its 1-bits lie in one unbroken run. For example, `00011110` is uniform and describes an edge, while `01010101` is not. Uniform patterns correspond to flat areas, spots, line ends, edges and corners, and the remaining codes describe irregular neighbourhoods. Only 58 of the 256 codes are uniform, so a share far above 23% shows that an image is dominated by simple local structures.
+
+The entropy summarises how evenly the codes are used. It is 0 bits when every pixel has the same code and 8 bits when all 256 codes are equally common. A low value therefore means that a few patterns dominate the texture, and a high value that many different patterns occur.
 
 | Image | Uniform patterns | Entropy (bits) | Most common codes |
 |---|---:|---:|---|

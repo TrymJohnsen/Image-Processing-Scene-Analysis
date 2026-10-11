@@ -1,12 +1,14 @@
 # Assignment 2 status
 
-Dette er en kort recap av arbeidet så langt, slik at det er lett å hoppe inn i prosjektet.
+Dette er en kort recap av arbeidet så langt, slik at det er lett å hoppe inn i prosjektet. Alle seks kodeoppgavene er ferdige. Det som gjenstår står under [Veien videre](#veien-videre).
 
 ## Datasett
 
 Vi bruker hovedsakelig Intel Image Classification-datasettet. Datasettene ligger lokalt under `data/` og spores ikke i Git.
 
 Fourier-delen bruker ett bilde fra `buildings` gjennom alle eksperimentene. Det gjør resultatene enkle å sammenligne. PCA bruker 200 bilder fra samme kategori. Bildene gjøres om til grayscale og skaleres til 64 × 64 piksler. Vi bruker én kategori for å undersøke variasjon mellom lignende scener, i stedet for å blande helt ulike klasser.
+
+HOG, blob detection og contour detection bruker enkeltbilder fra Intel-settet. LBP bruker ett Intel-bilde og to eksempelbilder som følger med scikit-image.
 
 ## Fourier Transform
 
@@ -115,6 +117,18 @@ Baseline er 5 × 5 Gaussisk blur, Otsu-terskel og minsteareal 15 piksler². Cont
 
 Arbeidsnotater og analyse ligger i [`report/notes.md`](../report/notes.md). Notatene bygges ut etter hver del og skal senere brukes som grunnlag for sluttrapporten. Dette er ikke ferdig rapporttekst ennå.
 
-## Neste steg
+## Veien videre
 
-- Finalisere rapport, figurer og figurreferanser
+### Forbedringer i det som er gjort
+
+Hver del vurderes 30 % på forklaring, 30 % på resultater og 40 % på innsikt i diskusjonen. Punktene under er små endringer som styrker diskusjonen.
+
+- **PCA, optimal k:** oppgaven ber oss «determine the optimal number of components», mens notatene bare oppgir området 50–100. Vi har valgt *k* = 85, som beholder 90 % av variansen. Det gjenstår å skrive dette inn i notatene. Til sammenligning nås 80 % ved *k* = 43 og 95 % ved *k* = 123.
+- **PCA, valg av datasett:** notatene begrunner `buildings` med at vi manglet et ansiktsdatasett. Oppgaven tillater «any other category», så begrunnelsen bør være faglig.
+- **HOG, enkel scene:** oppgaven krever «both simple and complex scenes». Bygning, gate og skog er alle ganske komplekse. Vi lar bildene stå og omtaler bygningen som den enkle scenen. Hvis vi ombestemmer oss, kan vi legge til et rolig bilde fra `sea` eller `glacier`.
+- **Fourier, low-pass:** filtrene sammenlignes bare visuelt. Regn ut MSE mot originalen for de tre radiene.
+
+### Rapporten
+
+- Beskriv datasettene kort. Oppgaven krever en beskrivelse av datasett utenfra, og det gjelder også de to scikit-image-bildene i LBP.
+- Si tydelig hva som er egen implementasjon og hva som er bibliotek. PCA, LBP og blob-detektoren er skrevet selv. HOG bruker scikit-image, og konturene spores med OpenCV sin `findContours`.
