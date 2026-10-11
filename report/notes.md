@@ -132,3 +132,58 @@ The face lies between the two. Its share of uniform patterns is close to that of
 ### Limitations
 
 The basic method only looks one pixel away from the centre, so it describes the finest scale in the image. Resizing changes what that scale is. The brick image was reduced from 512 × 512, which smooths the surface of each brick. The codes also depend on direction. Rotating the brick image would move its peaks to other codes, even though the texture is the same.
+
+## Blob Detection
+
+Blob detection was applied to four images from the Intel training set, chosen to cover different kinds of blobs: `sea/10399.jpg` (a single boat on calm water), `buildings/10310.jpg` (dark windows on a plain wall), `street/10015.jpg` (street lamps at night) and `sea/1021.jpg` (rocks in shallow water). The images were used at their original 150 × 150 size. Detection was done on the grayscale image scaled to [0, 1], and the results are drawn on the colour original.
+
+### Method
+
+A blob is a region that is brighter or darker than its surroundings. The detector uses the Laplacian of Gaussian (LoG). The image is first smoothed with a Gaussian of width σ, and the Laplacian then measures how much each pixel differs from its neighbourhood. The response is strongest at the centre of a blob whose size matches σ. A bright blob gives a negative response and a dark blob a positive one, so the sign separates the two types.
+
+The algorithm was implemented with the following steps, using OpenCV only for the Gaussian blur and the Laplacian filter:
+
+1. Compute the LoG response for 11 values of σ from 2 to 12. Each response is multiplied by σ², which makes responses from different scales comparable.
+2. Find points that are larger than all 26 neighbours in position and scale, and above a threshold. Each such point is a blob with centre (x, y) and radius √2 · σ.
+3. Remove overlapping detections. Blobs are sorted by response strength, and a blob is dropped if more than half of the smaller circle is covered by a stronger blob.
+
+Bright and dark blobs are found separately by running steps 2 and 3 on the negated and the original response. The implementation was checked on synthetic discs with known position and radius, where it returned the correct centres and the nearest available radius. For an ideal disc the response is about 0.74 times the contrast between the disc and its background. The baseline threshold of 0.2 therefore corresponds to a contrast of roughly 0.27 on the [0, 1] intensity scale.
+
+### Results
+
+| Image | Blobs | Bright | Dark | Radius min / median / max (pixels) |
+|---|---:|---:|---:|---|
+| Boat | 1 | 0 | 1 | 4.24 / 4.24 / 4.24 |
+| Windows | 14 | 3 | 11 | 2.83 / 4.95 / 14.14 |
+| Lamps | 22 | 21 | 1 | 2.83 / 2.83 / 2.83 |
+| Rocks | 23 | 8 | 15 | 2.83 / 2.83 / 11.31 |
+
+The position, radius and response of every blob are stored in `results/blob/blobs.csv`.
+
+The boat image gives a single dark blob on the hull. The boat is long and narrow, so the circle covers only part of it. The smooth sea and sky produce no detections.
+
+In the windows image, each of the five separate windows is found as one dark blob with a radius of 4 to 6 pixels, which matches their size. The long band of windows is not resolved into single panes. The panes are separated by thin frames, and after smoothing the band acts as one elongated dark region. It gives one large blob where the band is tallest and a few small ones. Several blobs lie on the image border, where the edge of the picture cuts through the sky and a brighter strip of wall.
+
+The lamps image gives 21 bright blobs on the street lamps and lit windows. All have the smallest available radius, 2.83 pixels. The lamps are smaller than the lowest scale in the search, so their true size is not measured. The dark road and trees give no detections.
+
+The rocks image is the most complex. Most of the 15 dark blobs are shadows and gaps between rocks, and the bright blobs are light-coloured stones. The rocks themselves are not outlined one by one, and the count is far below the real number of stones. A rock is not a region of uniform brightness. It has a lit side and a shadowed side, which the detector sees as separate bright and dark blobs.
+
+### Effect of parameters
+
+The threshold has the largest effect. The table shows the number of blobs for three thresholds, with all other parameters at the baseline.
+
+| Threshold | Boat | Windows | Lamps | Rocks |
+|---:|---:|---:|---:|---:|
+| 0.10 | 4 | 87 | 106 | 136 |
+| 0.20 | 1 | 14 | 22 | 23 |
+| 0.30 | 0 | 6 | 8 | 0 |
+
+A low threshold accepts weak responses from wall texture, ripples and foliage, and the count rises sharply. A high threshold keeps only strong contrasts. The lamps and windows fall slowly at high thresholds because they contain a few very strong structures. The rocks fall from 23 to 0 between 0.20 and 0.30, which shows that the image contains many blobs of similar, moderate contrast. No single threshold suits all four images. At 0.20 the boat is barely detected, while the windows image still contains border detections.
+
+The scale range controls which sizes can be found. On the rocks image, searching only σ = 2 to 4 gives 22 blobs, almost the same as the baseline of 23, because most blobs are small. Searching only σ = 6 to 12 gives 3 blobs, and the two dark rocks on the left are then merged into one large blob. The smallest σ also sets a lower limit on the reported radius, as seen in the lamps image.
+
+The overlap limit had little effect here. Without pruning, the rocks image gives 24 blobs instead of 23. The extra detection is a large circle around two smaller blobs that describe the same pair of rocks. Pruning matters more at low thresholds, where many weak responses occur at neighbouring scales.
+
+### Limitations
+
+The detector describes every blob as a circle, so elongated or rectangular objects such as the boat and the window band are represented poorly. It reacts to contrast, not to objects, and can therefore split one object into several blobs or respond to shadows. Detections on the image border are caused by the image edge and not by real structures.

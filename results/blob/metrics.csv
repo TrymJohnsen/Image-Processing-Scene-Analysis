@@ -1,0 +1,5 @@
+image,blobs,bright,dark,min_radius,median_radius,max_radius
+boat,1,0,1,4.24,4.24,4.24
+windows,14,3,11,2.83,4.95,14.14
+lamps,22,21,1,2.83,2.83,2.83
+rocks,23,8,15,2.83,2.83,11.31

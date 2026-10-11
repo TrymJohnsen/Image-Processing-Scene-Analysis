@@ -74,12 +74,31 @@ Dette er gjort:
 
 Mursteinen har det mest konsentrerte histogrammet, og skogen det flateste. De målte verdiene ligger i [`results/lbp/metrics.csv`](../results/lbp/metrics.csv).
 
+## Blob detection
+
+**Status:** Ferdig
+
+**Kode:** [`src/blob.py`](../src/blob.py)
+
+**Resultater:** [`results/blob/`](../results/blob/)
+
+Dette er gjort:
+
+- Implementert Laplacian of Gaussian-detektoren selv, med OpenCV bare til Gaussisk blur og Laplace-filter.
+- Brukt fire bilder fra Intel-settet i original størrelse: båt, vinduer, gatelykter og steiner.
+- Markert lyse og mørke blobs med sirkler på originalbildene.
+- Målt antall, størrelse og posisjon for hver blob.
+- Testet terskel, skalaområde og overlappgrense.
+
+Baseline er σ fra 2 til 12 i 11 steg, terskel 0,2 og overlapp 0,5. Terskelen har størst effekt. De målte verdiene ligger i [`results/blob/metrics.csv`](../results/blob/metrics.csv) og [`results/blob/blobs.csv`](../results/blob/blobs.csv).
+
+Contour detection skal bruke de samme fire bildene.
+
 ## Rapport
 
 Arbeidsnotater og analyse ligger i [`report/notes.md`](../report/notes.md). Notatene bygges ut etter hver del og skal senere brukes som grunnlag for sluttrapporten. Dette er ikke ferdig rapporttekst ennå.
 
 ## Neste steg
 
-- Blob detection
 - Contour detection
 - Finalisere rapport, figurer og figurreferanser
