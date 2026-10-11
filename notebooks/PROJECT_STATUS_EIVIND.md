@@ -10,9 +10,11 @@ Fourier-delen bruker ett bilde fra `buildings` gjennom alle eksperimentene. Det 
 
 ## Fourier Transform
 
-**Status:** Ferdig  
-**Kode:** [`src/fourier.py`](../src/fourier.py)  
-**Resultater:** [`results/fourier/`](../results/fourier/)
+**Status:** Ferdig
+
+**Kode:** [`src/fourier.py`](src/fourier.py)
+
+**Resultater:** [`results/fourier/`](results/fourier/)
 
 Dette er gjort:
 
@@ -26,9 +28,11 @@ Formålet er å vise forskjellen mellom lave og høye romlige frekvenser, og hvo
 
 ## PCA
 
-**Status:** Ferdig  
-**Kode:** [`src/pca.py`](../src/pca.py)  
-**Resultater:** [`results/pca/`](../results/pca/)
+**Status:** Ferdig
+
+**Kode:** [`src/pca.py`](src/pca.py)
+
+**Resultater:** [`results/pca/`](results/pca/)
 
 Dette er gjort:
 
@@ -39,21 +43,23 @@ Dette er gjort:
 - Testet flere verdier av *k* og målt cumulative explained variance og MSE.
 - Rekonstruert bilder med ulike verdier av *k*.
 
-I dette eksperimentet er *k* = 50–100 et nyttig område. Ved *k* = 100 beholdes 92,31 % av variansen, og rekonstruksjonene er visuelt nær originalene. Rekonstruksjonsfiguren viser tre representative bilder for å være lesbar, men PCA er tilpasset med alle 200 bildene. De målte verdiene ligger i [`results/pca/metrics.csv`](../results/pca/metrics.csv).
+I dette eksperimentet er *k* = 50–100 et nyttig område. Ved *k* = 100 beholdes 92,31 % av variansen, og rekonstruksjonene er visuelt nær originalene. Rekonstruksjonsfiguren viser tre representative bilder for å være lesbar, men PCA er tilpasset med alle 200 bildene. De målte verdiene ligger i [`results/pca/metrics.csv`](results/pca/metrics.csv).
 
 ## HOG Features
 
 **Status:** Ferdig
 
-**Kode:** [`src/hog.py`](../src/hog.py)
+**Kode:** [`src/hog.py`](src/hog.py)
 
-**Resultater:** [`results/hog/`](../results/hog/)
+**Resultater:** [`results/hog/`](results/hog/)
 
-Tre bilder og flere verdier for cellestørrelse, blokkstørrelse og antall orienteringer er testet.
+HOG beskriver lokal form ved å samle retningene til bildegradientene. Vi valgte en strukturert bygning, en gate med tydelig perspektiv og en kompleks skog for å sammenligne ulike kantmønstre.
+
+Baseline er 9 orienteringer, 8 × 8 piksler per celle og 2 × 2 celler per blokk. Cellestørrelse, blokkstørrelse og antall orienteringer varieres for å undersøke balansen mellom detaljnivå og størrelsen på descriptoren.
 
 ## Rapport
 
-Arbeidsnotater og analyse ligger i [`report/notes.md`](../report/notes.md). Notatene bygges ut etter hver del og skal senere brukes som grunnlag for sluttrapporten. Dette er ikke ferdig rapporttekst ennå.
+Arbeidsnotater og analyse ligger i [`report/notes.md`](report/notes.md). Notatene bygges ut etter hver del og skal senere brukes som grunnlag for sluttrapporten. Dette er ikke ferdig rapporttekst ennå.
 
 ## Neste steg
 
