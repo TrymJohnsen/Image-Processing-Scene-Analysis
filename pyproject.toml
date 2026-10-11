@@ -1,0 +1,17 @@
+[project]
+name = "image-processing-scene-analysis"
+version = "0.1.0"
+description = "IT3212 Assignment 2: image processing and scene analysis"
+readme = "README.md"
+authors = [
+    { name = "egeiran", email = "eivind.geiran@hotmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel>=7.4.0",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "opencv-python>=5.0.0.93",
+    "scikit-image>=0.26.0",
+]
