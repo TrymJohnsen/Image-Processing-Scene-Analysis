@@ -1,0 +1,5 @@
+image,otsu_threshold,contours,median_area,max_area,median_perimeter,max_perimeter
+boat,129,2,6724.5,13343.5,260.4,468.3
+windows,101,6,124.0,14060.0,43.7,946.5
+lamps,52,18,29.8,7539.0,22.7,1293.3
+rocks,117,17,40.0,10698.0,40.1,608.6

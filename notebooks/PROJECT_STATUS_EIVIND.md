@@ -92,7 +92,24 @@ Dette er gjort:
 
 Baseline er σ fra 2 til 12 i 11 steg, terskel 0,2 og overlapp 0,5. Terskelen har størst effekt. De målte verdiene ligger i [`results/blob/metrics.csv`](../results/blob/metrics.csv) og [`results/blob/blobs.csv`](../results/blob/blobs.csv).
 
-Contour detection skal bruke de samme fire bildene.
+## Contour detection
+
+**Status:** Ferdig
+
+**Kode:** [`src/contour.py`](../src/contour.py)
+
+**Resultater:** [`results/contour/`](../results/contour/)
+
+Dette er gjort:
+
+- Brukt de samme fire bildene som i blob detection, og gjenbrukt bildeutvalget fra `src/blob.py`.
+- Glattet, terskelet med Otsu og sporet konturene med OpenCV sin `findContours`.
+- Tegnet hver kontur i egen farge på originalbildene.
+- Målt antall, areal, omkrets og posisjon for hver kontur.
+- Testet terskelverdi, blur-størrelse og minsteareal.
+- Sammenlignet blob og contour på de samme bildene.
+
+Baseline er 5 × 5 Gaussisk blur, Otsu-terskel og minsteareal 15 piksler². Contour gir faktisk form og areal, men slår sammen områder som henger sammen. Blob skiller tette lyspunkter bedre. De målte verdiene ligger i [`results/contour/metrics.csv`](../results/contour/metrics.csv) og [`results/contour/contours.csv`](../results/contour/contours.csv).
 
 ## Rapport
 
@@ -100,5 +117,4 @@ Arbeidsnotater og analyse ligger i [`report/notes.md`](../report/notes.md). Nota
 
 ## Neste steg
 
-- Contour detection
 - Finalisere rapport, figurer og figurreferanser

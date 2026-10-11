@@ -187,3 +187,78 @@ The overlap limit had little effect here. Without pruning, the rocks image gives
 ### Limitations
 
 The detector describes every blob as a circle, so elongated or rectangular objects such as the boat and the window band are represented poorly. It reacts to contrast, not to objects, and can therefore split one object into several blobs or respond to shadows. Detections on the image border are caused by the image edge and not by real structures.
+
+## Contour Detection
+
+Contour detection was applied to the same four Intel images as blob detection: the boat, the windows, the lamps and the rocks. This makes the two methods directly comparable.
+
+### Method
+
+A contour is the closed outline of a connected region. The detector first turns the grayscale image into a binary image and then traces the border of every region in it:
+
+1. Smooth the image with a 5 × 5 Gaussian filter to remove small details and noise.
+2. Threshold the image. Pixels brighter than the threshold become white and the rest black. The baseline uses Otsu's method, which chooses the threshold that best separates the image histogram into a dark and a bright group.
+3. Trace the borders with OpenCV's `findContours`, which follows the edge of each white region and of each black hole inside a white region.
+4. Discard contours with an area below 15 pixels².
+
+For each contour the area, the perimeter and the centre of mass are calculated. The measurements were checked on synthetic shapes. A rectangle was measured exactly. For a disc of radius 20 the area was 1200 pixels² instead of 1257 and the perimeter 131.9 instead of 125.7, because the outline follows the pixel grid in small steps.
+
+### Results
+
+| Image | Otsu threshold | Contours | Area median / max (pixels²) | Perimeter median / max (pixels) |
+|---|---:|---:|---|---|
+| Boat | 129 | 2 | 6724.5 / 13343.5 | 260.4 / 468.3 |
+| Windows | 101 | 6 | 124.0 / 14060.0 | 43.7 / 946.5 |
+| Lamps | 52 | 18 | 29.8 / 7539.0 | 22.7 / 1293.3 |
+| Rocks | 117 | 17 | 40.0 / 10698.0 | 40.1 / 608.6 |
+
+The position, area and perimeter of every contour are stored in `results/contour/contours.csv`.
+
+Every image has one very large contour, which is why the maximum area is far above the median. It is the outline of the bright side of the binary image, not of an object. In the boat image this region covers 59% of the picture. Its lower border is an arc across the water, caused by the gradual darkening towards the bottom and the corners. The second contour follows the hull of the boat closely, with an area of 105.5 pixels².
+
+In the windows image the five separate windows are each outlined with their rectangular shape, with areas from 69.5 to 182 pixels². The long band of windows does not get its own contour. In the binary image it is connected to the dark sky at its left end, so it becomes part of the outline of the wall.
+
+The lamps image has a low Otsu threshold of 52 because most of the picture is dark. Two lamps at the top are outlined separately. The other lamps, the lit shop fronts and the lit ground merge into one region with a perimeter of 1293 pixels.
+
+In the rocks image the sky and the sea form the large region, and its ragged lower border runs where the rocks begin. The other contours are bright patches on the rocks. Most of them cover part of a rock or several rocks together, and only a few stones are outlined as single objects.
+
+The plot of area against perimeter shows how compact the regions are. A circle has the shortest perimeter possible for its area. The windows lie close to that line. The rock contours lie well above it, which reflects their irregular outlines, and the large background regions lie furthest above.
+
+### Effect of parameters
+
+The threshold decides which pixels belong together, so it changes the regions themselves and not only how many are kept. On the rocks image, a threshold of 80 gives 13 contours. More of the picture becomes white, bright patches merge, and the two dark rocks on the left appear as holes. A threshold of 160 leaves only 2 contours, around the brightest sky and one light stone. The number of contours does not fall steadily as the threshold rises, as it did for blob detection. It goes up and down, because regions split and merge. The windows image shows this clearly. It has 6 contours for thresholds from 110 to 130 and 14 at 150, where the wall itself starts to break up.
+
+The blur size controls how much detail survives. Without blurring, the rocks image gives 33 contours with ragged outlines. The baseline 5 × 5 filter gives 17, and an 11 × 11 filter gives 10 with smoother outlines. The windows image is stable at 6 contours for every blur size from 5 upwards, and the boat image gives 2 contours for all sizes. Blurring therefore matters most for textured scenes.
+
+The minimum area removes small specks. Without it, the rocks image gives 63 contours instead of 17.
+
+### Comparison with blob detection
+
+| Image | Blobs | Contours |
+|---|---:|---:|
+| Boat | 1 | 2 |
+| Windows | 14 | 6 |
+| Lamps | 22 | 18 |
+| Rocks | 23 | 17 |
+
+The counts are of the same order, but the two methods mark different things.
+
+For the five separate windows the methods agree closely. The blob centres and the contour centres differ by less than one pixel. The difference is in the description. A blob is a circle with one of 11 possible radii, while a contour follows the rectangular window and gives its area and perimeter.
+
+The boat shows the same pattern. The blob is a circle on part of the hull, and the contour follows the whole hull. Blob detection gives no other detections in this image, while contour detection also returns the large region created by the brightness gradient.
+
+The lamps are handled better by blob detection. It marks 21 lamps and lit windows as separate bright blobs. Contour detection merges neighbouring lamps and lit surfaces into one region, because they are connected in the binary image.
+
+Neither method isolates the individual rocks. Blob detection marks shadows and gaps, and contour detection outlines bright patches.
+
+### Advantages and limitations
+
+Blob detection compares each point with its local surroundings. It is therefore not disturbed by gradual brightness changes across the image, and it can separate bright spots that lie close together. It also searches several sizes at once. Its limitations are that every blob is a circle, that the size is limited to the scales in the search, and that it gives no information about shape. It also produces detections at the image border.
+
+Contour detection gives the actual outline of a region, of any shape, together with its area and perimeter. Its main limitation is the single global threshold. Regions that touch in the binary image merge, uneven lighting creates contours that are not objects, and the background itself is returned as a contour. The result can change abruptly with the threshold.
+
+### When to use which
+
+Blob detection is more suitable when the task is to find or count small, compact structures, especially when the lighting is uneven or the structures lie close together. The street lamps are an example, and stars or cells under a microscope would be similar cases.
+
+Contour detection is more suitable when well-separated objects stand out clearly from an even background and their shape or size matters. The windows on the wall and the boat on the water are examples. Measuring the area of a window is possible from its contour, but not from a blob.
