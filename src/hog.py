@@ -116,6 +116,52 @@ def save_parameter_comparison(image, output_directory):
     print(f"Parameter comparison saved to: {output_path}")
 
 
+def baseline_orientation_distribution(image):
+    feature_blocks = hog(
+        image,
+        orientations=BASELINE["orientations"],
+        pixels_per_cell=BASELINE["pixels_per_cell"],
+        cells_per_block=BASELINE["cells_per_block"],
+        block_norm="L2-Hys",
+        visualize=False,
+        feature_vector=False,
+    )
+    distribution = feature_blocks.sum(axis=(0, 1, 2, 3))
+    return distribution / distribution.sum()
+
+
+def save_orientation_comparison(images, output_directory):
+    bin_width = 180 / BASELINE["orientations"]
+    bin_centers = np.arange(BASELINE["orientations"]) * bin_width + bin_width / 2
+
+    figure, axis = plt.subplots(figsize=(8, 4.5))
+    for image_name, image in images.items():
+        distribution = baseline_orientation_distribution(image)
+        axis.plot(
+            bin_centers,
+            distribution * 100,
+            marker="o",
+            linewidth=2,
+            label=image_name.capitalize(),
+        )
+        values = ", ".join(f"{value:.1%}" for value in distribution)
+        print(f"{image_name} orientation distribution: {values}")
+
+    axis.set(
+        title="Baseline HOG orientation distributions",
+        xlabel="Gradient orientation bin center (degrees)",
+        ylabel="Relative HOG strength (%)",
+        xticks=bin_centers,
+    )
+    axis.grid(alpha=0.25)
+    axis.legend()
+    figure.tight_layout()
+    output_path = output_directory / "orientation_distribution.png"
+    figure.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(figure)
+    print(f"Orientation comparison saved to: {output_path}")
+
+
 def main():
     project_root = Path(__file__).resolve().parents[1]
     dataset_directory = (
@@ -141,6 +187,7 @@ def main():
         save_image_comparison(images[image_name], image_name, output_directory)
 
     save_parameter_comparison(images["building"], output_directory)
+    save_orientation_comparison(images, output_directory)
 
 
 if __name__ == "__main__":
