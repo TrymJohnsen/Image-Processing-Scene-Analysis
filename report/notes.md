@@ -89,6 +89,8 @@ The experiment used `buildings/1001.jpg`, `street/10019.jpg` and `forest/10037.j
 
 HOG summarizes local edge directions by collecting gradient orientations within small cells. With the baseline settings of 9 orientations, 8 × 8 pixels per cell and 2 × 2 cells per block, the building produces repeated horizontal and vertical patterns. The street also has strong vertical edges, together with diagonals that follow the street perspective. The forest pattern is less regular, although the tree trunks still produce clear vertical responses.
 
+The aggregated baseline HOG values support these visual differences. The building has its strongest response in the 90° gradient bin, which contains 23.5% of its total orientation strength. The street places 36.4% in the two bins nearest 0° and 180°, with additional responses in diagonal bins. The forest distribution is flatter: each bin contains between 10.1% and 13.2%. This shows that its local edge directions are spread more evenly than those of the structured scenes. Gradient directions are perpendicular to the corresponding image edges.
+
 ### Parameter experiment
 
 Smaller 4 × 4 cells preserve finer local changes, but increase the descriptor from 8100 to 34596 values. Larger 16 × 16 cells give a much coarser pattern and reduce it to 1764 values. Changing the block from 1 × 1 to 3 × 3 does not visibly change the line pattern in the scikit-image visualization because that image displays the cell histograms before block normalization. It does change how neighboring cells are grouped and normalized, and changes the descriptor size from 2304 to 15876 values.
