@@ -57,13 +57,29 @@ HOG beskriver lokal form ved å samle retningene til bildegradientene. Vi valgte
 
 Baseline er 9 orienteringer, 8 × 8 piksler per celle og 2 × 2 celler per blokk. Cellestørrelse, blokkstørrelse og antall orienteringer varieres for å undersøke balansen mellom detaljnivå og størrelsen på descriptoren.
 
+## LBP
+
+**Status:** Ferdig
+
+**Kode:** [`src/lbp.py`](../src/lbp.py)
+
+**Resultater:** [`results/lbp/`](../results/lbp/)
+
+Dette er gjort:
+
+- Skrevet basic 8-nabo LBP og histogramfunksjonen selv med NumPy.
+- Brukt tre bilder i 128 × 128: skog fra Intel-settet, pluss `brick` og ansiktsutsnittet fra `astronaut`, som følger med scikit-image.
+- Laget LBP-bilde og histogram for hvert bilde, og en felles histogramsammenligning.
+- Målt andel uniforme mønstre, entropi og de vanligste kodene.
+
+Mursteinen har det mest konsentrerte histogrammet, og skogen det flateste. De målte verdiene ligger i [`results/lbp/metrics.csv`](../results/lbp/metrics.csv).
+
 ## Rapport
 
 Arbeidsnotater og analyse ligger i [`report/notes.md`](../report/notes.md). Notatene bygges ut etter hver del og skal senere brukes som grunnlag for sluttrapporten. Dette er ikke ferdig rapporttekst ennå.
 
 ## Neste steg
 
-- LBP
 - Blob detection
 - Contour detection
 - Finalisere rapport, figurer og figurreferanser

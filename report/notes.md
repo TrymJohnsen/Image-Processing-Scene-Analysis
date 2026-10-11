@@ -96,3 +96,39 @@ The aggregated baseline HOG values support these visual differences. The buildin
 Smaller 4 × 4 cells preserve finer local changes, but increase the descriptor from 8100 to 34596 values. Larger 16 × 16 cells give a much coarser pattern and reduce it to 1764 values. Changing the block from 1 × 1 to 3 × 3 does not visibly change the line pattern in the scikit-image visualization because that image displays the cell histograms before block normalization. It does change how neighboring cells are grouped and normalized, and changes the descriptor size from 2304 to 15876 values.
 
 Using 6 orientation bins gives a coarser set of directions and 5400 descriptor values. With 12 bins, the direction sampling is finer and the descriptor grows to 10800 values, although the visual difference from 9 bins is modest in this image. Smaller cells, larger blocks and more orientation bins can describe more detail, but they also increase descriptor size and computation. The baseline keeps the main building structure clear without producing the largest descriptor.
+
+## Local Binary Patterns
+
+The experiment used three grayscale images with different kinds of texture. The natural scene is `forest/10037.jpg` from the Intel training set. The other two are sample images bundled with scikit-image: `brick`, a regular man-made texture, and the face region cropped from `astronaut`. Each image was converted to grayscale and resized to 128 × 128 pixels, so that all three histograms are built from the same number of pixels.
+
+### LBP computation
+
+The LBP function was written with NumPy instead of a library routine. Each pixel is compared with its eight direct neighbours. A neighbour that is at least as bright as the centre gives a 1, and a darker neighbour gives a 0. The eight bits are read clockwise from the top-left neighbour, which is the lowest bit, and together they form a code between 0 and 255. Border pixels do not have eight neighbours, so only interior pixels receive a code and the LBP image is 126 × 126.
+
+The code records only whether each neighbour is brighter or darker, not by how much. An overall change in brightness therefore leaves the codes unchanged. The same property means that weak noise in a smooth area produces codes just as readily as a strong edge does.
+
+### LBP images
+
+In the forest image the LBP response is dense across the whole frame. The trunks appear as vertical streaks in the upper half, and the leaf-covered ground gives diagonal streaks. The brick image shows dark lines that follow the mortar joints, while the brick faces are mostly bright with scattered speckles. In the face image the outlines of the hair, eyes, nose, mouth and collar are clearly visible. The smooth background and skin become speckled, because small intensity differences there are treated the same way as large ones.
+
+### Histograms
+
+The histogram counts how often each of the 256 codes occurs. It describes which local patterns a texture is built from, but not where they are located. The bars are coloured by pattern type. A uniform pattern has at most two changes between 0 and 1 around the circle of neighbours, which corresponds to flat areas, spots, line ends, edges and corners. Only 58 of the 256 codes are uniform. The remaining codes describe irregular neighbourhoods.
+
+| Image | Uniform patterns | Entropy (bits) | Most common codes |
+|---|---:|---:|---|
+| Forest | 70.5% | 6.92 | 255 (7.7%), 0 (6.7%), 60 (1.7%) |
+| Brick | 86.0% | 5.79 | 255 (16.6%), 30 (4.3%), 2 (3.7%) |
+| Face | 84.7% | 6.35 | 255 (9.5%), 135 (3.9%), 240 (3.5%) |
+
+Code 255 is the largest bin in all three images. It means that no neighbour is darker than the centre, which happens in flat areas and at local dark spots. It is most frequent in the brick image, where the brick faces are nearly constant after resizing.
+
+The brick histogram is the most concentrated. It has the lowest entropy and the highest share of uniform patterns, and its energy sits in a few groups of codes. Codes such as 30 and 60 have four adjacent neighbours set, which is the pattern of a straight edge. This matches a texture made of flat faces separated by straight joints with a similar direction.
+
+The forest histogram is the flattest. All 256 codes occur, the entropy is the highest of the three, and almost 30% of the pixels have a non-uniform pattern. Code 0, where the centre is brighter than every neighbour, is the second most common code. This reflects the many small bright specks from leaves and light between the branches. The texture is irregular and has no dominant edge direction at this scale.
+
+The face lies between the two. Its share of uniform patterns is close to that of the brick, but the peaks are spread over more edge codes, such as 135 and 240, which have four adjacent neighbours set on different sides. The face contains smooth shading and curved contours in many directions instead of one repeated direction.
+
+### Limitations
+
+The basic method only looks one pixel away from the centre, so it describes the finest scale in the image. Resizing changes what that scale is. The brick image was reduced from 512 × 512, which smooths the surface of each brick. The codes also depend on direction. Rotating the brick image would move its peaks to other codes, even though the texture is the same.
