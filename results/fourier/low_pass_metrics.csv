@@ -1,0 +1,7 @@
+method,cutoff_radius,mse_against_clean
+Noisy image,,596.65150802
+Low-pass,10,1412.22266596
+Low-pass,20,954.70814013
+Low-pass,35,724.82974143
+Low-pass,50,563.39323134
+Low-pass,70,492.88339043
