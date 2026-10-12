@@ -9,6 +9,7 @@ import numpy as np
 IMAGE_SIZE = (64, 64)
 NUMBER_OF_IMAGES = 200
 RANDOM_SEED = 42
+EXPLAINED_VARIANCE_TARGET = 0.90
 TESTED_COMPONENT_COUNTS = [1, 5, 10, 25, 50, 100, 150]
 
 
@@ -92,7 +93,9 @@ def save_mean_image(mean_image, image_shape, output_directory):
     print(f"Mean image saved to: {output_path}")
 
 
-def save_explained_variance(explained_variance_ratio, output_directory):
+def save_explained_variance(
+    explained_variance_ratio, selected_count, output_directory
+):
     cumulative_variance = np.cumsum(explained_variance_ratio)
     component_counts = np.arange(1, len(cumulative_variance) + 1)
 
@@ -100,6 +103,14 @@ def save_explained_variance(explained_variance_ratio, output_directory):
     axis.plot(component_counts, cumulative_variance, color="tab:blue")
     for level in (0.8, 0.9, 0.95):
         axis.axhline(level, color="gray", linestyle="--", linewidth=0.8)
+    axis.plot(
+        selected_count,
+        cumulative_variance[selected_count - 1],
+        "o",
+        color="tab:orange",
+        label=f"Selected k = {selected_count} (90% criterion)",
+    )
+    axis.legend(frameon=False)
     axis.set(
         xlabel="Number of principal components (k)",
         ylabel="Cumulative explained variance",
@@ -150,14 +161,17 @@ def save_reconstruction_comparison(
     reconstructions,
     image_shape,
     component_counts,
+    selected_count,
     output_directory,
 ):
-    displayed_counts = [1, 10, 50, 100, component_counts[-1]]
+    displayed_counts = sorted(
+        set([1, 10, 50, selected_count, 100, component_counts[-1]])
+    )
     image_indices = [0, len(data_matrix) // 2, len(data_matrix) - 1]
     figure, axes = plt.subplots(
         len(image_indices),
         len(displayed_counts) + 1,
-        figsize=(12, 6),
+        figsize=(14, 6),
     )
 
     for row, image_index in enumerate(image_indices):
@@ -178,7 +192,11 @@ def save_reconstruction_comparison(
                 vmax=1,
             )
             axes[row, column].set_title(
-                f"k = {component_count}" if row == 0 else ""
+                (
+                    f"k = {component_count}\n90% criterion"
+                    if component_count == selected_count
+                    else f"k = {component_count}"
+                ) if row == 0 else ""
             )
 
     for axis in axes.ravel():
@@ -214,7 +232,7 @@ def save_reconstruction_error(metrics, output_directory):
 def save_metrics(metrics, pixel_count, output_directory):
     output_path = output_directory / "metrics.csv"
     with output_path.open("w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.writer(csv_file)
+        writer = csv.writer(csv_file, lineterminator="\n")
         writer.writerow(
             ["k", "cumulative_explained_variance", "mse", "pixel_reduction"]
         )
@@ -281,10 +299,25 @@ def main():
     print(f"Projected data shape: {projected_data.shape}")
     print(f"Total explained variance: {np.sum(explained_variance_ratio):.6f}")
 
-    save_mean_image(mean_image, image_shape, output_directory)
-    save_explained_variance(explained_variance_ratio, output_directory)
+    cumulative_variance = np.cumsum(explained_variance_ratio)
+    selected_count = int(
+        np.searchsorted(cumulative_variance, EXPLAINED_VARIANCE_TARGET) + 1
+    )
+    assert cumulative_variance[selected_count - 1] >= EXPLAINED_VARIANCE_TARGET
+    assert (
+        selected_count == 1
+        or cumulative_variance[selected_count - 2] < EXPLAINED_VARIANCE_TARGET
+    )
+    print(f"Selected k = {selected_count}: minimum reaching 90% explained variance")
 
-    component_counts = TESTED_COMPONENT_COUNTS + [len(components)]
+    save_mean_image(mean_image, image_shape, output_directory)
+    save_explained_variance(
+        explained_variance_ratio, selected_count, output_directory
+    )
+
+    component_counts = sorted(
+        set(TESTED_COMPONENT_COUNTS + [selected_count, len(components)])
+    )
     reconstructions, metrics = evaluate_reconstructions(
         data_matrix,
         centered_data,
@@ -303,6 +336,7 @@ def main():
         reconstructions,
         image_shape,
         component_counts,
+        selected_count,
         output_directory,
     )
     save_reconstruction_error(metrics, output_directory)
