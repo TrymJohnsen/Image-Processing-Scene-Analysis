@@ -5,6 +5,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patheffects
+from matplotlib.colors import hsv_to_rgb
 from matplotlib.lines import Line2D
 
 from blob import BASELINE as BLOB_BASELINE
@@ -28,18 +29,15 @@ PARAMETER_CONFIGURATIONS = [
 PARAMETER_IMAGE = "rocks"
 SWEEP_THRESHOLDS = np.arange(20, 231, 10)
 SWEEP_BLUR_SIZES = [1, 3, 5, 7, 9, 11, 13, 15]
-CONTOUR_COLORS = [
-    "#ffd60a",
-    "#ff2d95",
-    "#00d4ff",
-    "#7cff4f",
-    "#ff7a00",
-    "#b388ff",
-    "#ffffff",
-    "#00e0a4",
-    "#ff4d4d",
-    "#4d7cff",
-]
+
+
+def contour_colors(number_of_contours):
+    # Evenly spaced hues are unique; golden-angle ordering separates neighbours.
+    hue_order = np.argsort((np.arange(number_of_contours) * 0.61803398875) % 1)
+    hues = hue_order / max(number_of_contours, 1)
+    return hsv_to_rgb(np.column_stack([
+        hues, np.full(number_of_contours, 0.75), np.ones(number_of_contours)
+    ]))
 
 
 def to_uint8(image):
@@ -105,13 +103,14 @@ def summarize_contours(contours):
 def draw_contours(axis, color_image, contours):
     axis.imshow(color_image)
     outline = [patheffects.withStroke(linewidth=2.6, foreground="black")]
-    for index, contour in enumerate(contours):
+    colors = contour_colors(len(contours))
+    for contour, color in zip(contours, colors):
         points = contour[:, 0, :]
         closed_points = np.vstack([points, points[:1]])
         axis.plot(
             closed_points[:, 0],
             closed_points[:, 1],
-            color=CONTOUR_COLORS[index % len(CONTOUR_COLORS)],
+            color=color,
             linewidth=1.3,
             path_effects=outline,
         )

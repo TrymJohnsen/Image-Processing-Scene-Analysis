@@ -8,9 +8,20 @@ Most of the energy is concentrated near the center of the spectrum. This shows t
 
 ### Low-pass filtering
 
-Gaussian noise with mean 0 and standard deviation 25 was added using a fixed random seed. Cutoff radii of 10, 20 and 35 pixels were selected as increasingly permissive filters, making the balance between noise removal and retained detail easy to observe.
+Gaussian noise with mean 0 and standard deviation 25 was added using the fixed random seed 42. Cutoff radii of 10, 20, 35, 50 and 70 pixels were tested on the same noisy image. MSE is measured against the clean original on the [0, 255] intensity scale, after clipping the reconstructed low-pass images to that range.
 
 Radius 10 removes much of the noise, but it also removes most fine structure. The building remains recognizable, while windows, railings and sharp edges are heavily blurred. Radius 20 gives an intermediate result, with more building structure visible and much of the noise still reduced. Radius 35 preserves substantially more detail, but also keeps more noise. Noise and real image edges can both occupy high-frequency regions, so the filter cannot separate them perfectly.
+
+| Image / cutoff radius | MSE against the clean original |
+|---|---:|
+| Noisy image before filtering | 596.65 |
+| Low-pass, 10 | 1412.22 |
+| Low-pass, 20 | 954.71 |
+| Low-pass, 35 | 724.83 |
+| Low-pass, 50 | 563.39 |
+| Low-pass, 70 | 492.88 |
+
+The full measurements are stored in `results/fourier/low_pass_metrics.csv`. Radii 10, 20 and 35 make the image look smoother while increasing MSE relative to the unfiltered noisy image: losing real high-frequency building structure outweighs the reduction in noise. Radii 50 and 70 retain more fine structure and reduce MSE below the noisy baseline, although visible noise remains. Radius 70 gives the lowest MSE among these five tested cutoffs. This is a result for this image and noise realization, not a universally useful cutoff. The useful radius depends on the image, noise level and desired trade-off between smoothing and detail preservation.
 
 ### High-pass filtering
 
@@ -23,22 +34,26 @@ Edges are emphasized because quick changes between light and dark pixels contain
 | Low-pass | 10 | Strong smoothing; most noise and fine detail removed |
 | Low-pass | 20 | More structure visible while much of the noise is reduced |
 | Low-pass | 35 | Most structure retained, but more noise remains |
+| Low-pass | 50 | Finer structure retained; MSE below the noisy baseline |
+| Low-pass | 70 | Most detail retained; lowest MSE among the tested cutoffs |
 | High-pass | 10 | Broad outlines and texture remain visible |
 | High-pass | 20 | Windows, railings, columns and wires stand out clearly |
 | High-pass | 35 | Fine edges dominate and wider structures fade |
 
 ### Fourier compression
 
-The compression experiment keeps the Fourier coefficients with the largest magnitudes and sets the rest to zero. The image is then reconstructed with the inverse Fourier transform.
+The compression experiment ranks conjugate groups by their mean coefficient magnitude and retains the strongest groups, setting the rest to zero. A real-valued image has a conjugate-symmetric Fourier transform: the coefficient at (u, v) is the conjugate of the coefficient at (-u mod H, -v mod W). Both members of a pair are retained together; self-conjugate bins such as DC count once. Selection stops once the requested count is reached, so finishing a pair can exceed that count by one coefficient.
 
-| Retained coefficients | MSE | Theoretical compression ratio |
-|---:|---:|---:|
-| 1% | 1118.34 | 100:1 |
-| 5% | 613.89 | 20:1 |
-| 10% | 395.36 | 10:1 |
-| 20% | 206.69 | 5:1 |
-| 50% | 46.48 | 2:1 |
-| 100% | 0.00 | 1:1 |
+| Requested coefficients | Actual retained | MSE | Retained coefficient ratio |
+|---:|---:|---:|---:|
+| 1% | 1.0000% | 1118.34 | 100.00:1 |
+| 5% | 5.0044% | 613.75 | 19.98:1 |
+| 10% | 10.0000% | 395.36 | 10.00:1 |
+| 20% | 20.0044% | 206.67 | 5.00:1 |
+| 50% | 50.0044% | 46.48 | 2.00:1 |
+| 100% | 100.0000% | 0.00 | 1.00:1 |
+
+The code checks conjugate symmetry and the inverse transform's imaginary residual before using the real part. Across these reconstructions, the maximum absolute imaginary residual is 7.21 × 10⁻¹⁴ intensity units, consistent with floating-point round-off. The symmetry check, actual counts and percentages, MSE and coefficient ratios are saved in `results/fourier/compression_metrics.csv`. This avoids silently discarding an imaginary component caused by an asymmetric selection.
 
 The reconstruction error decreases as more coefficients are retained. At 1%, the building is still recognizable, but the image is heavily blurred and has visible line patterns. At 5% and 10%, the floors, roof and window layout become clearer, although fine details are still missing. Keeping 20% preserves most major structure while reducing the coefficient count by a factor of five, making it a useful compromise in this experiment. At 50%, the reconstruction is visually close to the original and many fine edges have returned. Keeping 100% reproduces the original image with a reported MSE of 0.00.
 
@@ -46,7 +61,7 @@ The theoretical compression ratio only compares the total number of Fourier coef
 
 ## Principal Component Analysis
 
-The PCA experiment used 200 images from the buildings category of the Intel training set, and PCA was fitted using all 200 images. This category was selected because no facial-emotion dataset was available locally. Using one category also gives a coherent set with recurring structures such as façades, roofs, windows and sky, while retaining variation in viewpoint, shape and lighting that PCA can model.
+The PCA experiment used 200 images from the buildings category of the Intel training set. PCA was fitted on the same 200 images used for reconstruction evaluation. Using one category gives a coherent set with recurring structures such as façades, roofs, windows and sky, while retaining variation in viewpoint, shape and lighting that PCA can model.
 
 ### PCA representation
 
@@ -60,7 +75,7 @@ The image-space eigenvectors are directions of variation, while their eigenvalue
 
 ### Reconstruction experiment
 
-The reconstruction figure shows three representative examples from the 200 images used to fit PCA. Only three are shown to keep the comparison readable. One component retains only broad intensity structure, so the individual buildings are not identifiable. At *k* = 10, the coarse building layout returns, but edges remain heavily blurred. At *k* = 50, the buildings are recognizable but still visibly blurred. The *k* = 100 reconstructions are visually close to the originals, although some fine texture and edge sharpness are still reduced. With all 199 meaningful components, the training images are reconstructed with effectively zero MSE.
+The reconstruction figure shows three examples from the 200 images used to fit PCA. Only three are shown to keep the comparison readable. One component retains only broad intensity structure, so the individual buildings are not identifiable. At *k* = 10, the coarse building layout returns, but edges remain heavily blurred. At *k* = 50, the buildings are recognizable but still visibly blurred. The selected *k* = 85 reconstruction restores more structure while still losing fine texture and sharpness. The *k* = 100 reconstructions are closer to the originals, although some fine texture and edge sharpness are still reduced. With all 199 meaningful components, the training images are reconstructed with effectively zero MSE. This shows training-set reconstruction, not performance on unseen images; no separate train/test experiment is included.
 
 ### Explained variance and reconstruction error
 
@@ -71,25 +86,26 @@ The reconstruction figure shows three representative examples from the 200 image
 | 10 | 0.5928 | 0.024022 |
 | 25 | 0.7211 | 0.016450 |
 | 50 | 0.8231 | 0.010436 |
+| 85 | 0.900621 | 0.00586236 |
 | 100 | 0.9231 | 0.004536 |
 | 150 | 0.9740 | 0.001536 |
 | 199 | 1.0000 | 0.000000 |
 
 Cumulative explained variance increases with *k* because each added component accounts for another direction of variation. MSE decreases because reconstruction takes place in a larger subspace and therefore discards less information. The largest early gains occur before *k* = 50, after which each additional component produces a smaller improvement.
 
-For this experiment, *k* = 50 to 100 is a useful range rather than a universally optimal choice. At *k* = 50, the representation retains 82.31% of the variance and the buildings are recognizable, but the reconstructions remain visibly soft. At *k* = 100, 92.31% of the variance is retained, MSE falls to 0.004536, and the reconstruction is visually close to the original. The appropriate point within this range depends on whether stronger dimensionality reduction or finer image detail matters more.
+The minimum *k* reaching at least 90% cumulative explained variance is computed from the fitted eigenvalues, rather than hardcoded. With the current data it is *k* = 85, retaining 90.0621% of the variance with MSE 0.00586236. This is the selected compromise using a 90% explained-variance criterion. It is not universally optimal: at *k* = 50 the reduction is stronger but only 82.31% of variance remains, while *k* = 100 retains 92.31% with MSE 0.004536. The criterion prioritizes retaining most variation while reducing the per-image representation.
 
 ### Dimensionality reduction
 
-The reported pixel reduction values compare the original 4096 pixel values per image with *k* PCA coefficients. For example, *k* = 100 reduces the per-image representation by a factor of about 40.96. These are not actual file compression ratios because reconstruction also requires the shared PCA basis and mean image. Their storage cost and other file overhead would need to be included in a real compression calculation.
+The reported pixel reduction values compare the original 4096 pixel values per image with *k* PCA coefficients. The selected *k* = 85 gives per-image dimensionality reduction of 4096/85 = 48.19:1; *k* = 100 gives 40.96:1. These are not complete storage compression ratios because reconstruction also requires the shared PCA basis and mean image. Their storage cost and other file overhead would need to be included in a real compression calculation.
 
 ## HOG Features
 
-The experiment used `buildings/1001.jpg`, `street/10019.jpg` and `forest/10037.jpg`. Each image was converted to grayscale and resized to 128 × 128 pixels. The Sobel gradient magnitude shows where intensity changes are strongest. In the building and street images, bright gradient responses follow roof lines, windows, doors and façade boundaries. The forest response is denser because trunks, branches, leaves and the ground create edges across most of the image.
+The experiment used the simple scene `sea/10399.jpg` alongside the existing `buildings/1001.jpg`, `street/10019.jpg` and `forest/10037.jpg`. The sea image consists mainly of smooth sky and water, a clear horizon and a small boat, making the simple-versus-complex comparison explicit. Each image was converted to grayscale and resized to 128 × 128 pixels. The displayed Sobel gradient magnitude is a separate illustration of intensity changes; scikit-image HOG computes its own gradients internally. In the sea image, the strongest responses follow the horizon and boat, with weaker responses from water texture and gradual shading. In the building and street images, bright gradient responses follow roof lines, windows, doors and façade boundaries. The forest response is denser because trunks, branches, leaves and the ground create edges across most of the image.
 
-HOG summarizes local edge directions by collecting gradient orientations within small cells. With the baseline settings of 9 orientations, 8 × 8 pixels per cell and 2 × 2 cells per block, the building produces repeated horizontal and vertical patterns. The street also has strong vertical edges, together with diagonals that follow the street perspective. The forest pattern is less regular, although the tree trunks still produce clear vertical responses.
+HOG summarizes local edge directions by collecting gradient orientations within small cells. With the baseline settings of 9 orientations, 8 × 8 pixels per cell and 2 × 2 cells per block, the simple sea scene has fewer strong structures than the building, street and forest. The building produces repeated horizontal and vertical patterns. The street also has strong vertical edges, together with diagonals that follow the street perspective. The forest pattern is less regular, although the tree trunks still produce clear vertical responses. The original parameter grid is unchanged and still applied only to the building image.
 
-The aggregated baseline HOG values support these visual differences. The building has its strongest response in the 90° gradient bin, which contains 23.5% of its total orientation strength. The street places 36.4% in the two bins nearest 0° and 180°, with additional responses in diagonal bins. The forest distribution is flatter: each bin contains between 10.1% and 13.2%. This shows that its local edge directions are spread more evenly than those of the structured scenes. Gradient directions are perpendicular to the corresponding image edges.
+The orientation summary adds the block-normalized HOG values and normalizes their sum, so it represents relative strength in the HOG descriptor, not a literal percentage of all image edges. The simple sea scene has its largest share, 29.9%, in the 90° gradient bin, consistent with its horizontal horizon and water structure. The building also has its strongest response in that bin, with 23.5%. The street places 36.4% in the two bins nearest 0° and 180°, with additional responses in diagonal bins. The forest distribution is flatter: each bin contains between 10.1% and 13.2%. Gradient directions are perpendicular to the corresponding image edges. Block normalization allows weak local texture to contribute too, so even the simple scene's descriptor is not confined to its most visible horizon.
 
 ### Parameter experiment
 
@@ -99,13 +115,13 @@ Using 6 orientation bins gives a coarser set of directions and 5400 descriptor v
 
 ## Local Binary Patterns
 
-The experiment used three grayscale images with different kinds of texture. The natural scene is `forest/10037.jpg` from the Intel training set. The other two are sample images bundled with scikit-image: `brick`, a regular man-made texture, and the face region cropped from `astronaut`. Each image was converted to grayscale and resized to 128 × 128 pixels, so that all three histograms are built from the same number of pixels.
+The experiment used three grayscale images with different kinds of texture. The natural scene is `forest/10037.jpg` from the Intel training set. The other two are scikit-image sample images: [`brick`](https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.brick), a 512 × 512 grayscale wall texture originally obtained from CC0Textures under CC0 and transformed by scikit-image, and [`astronaut`](https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.astronaut), a 512 × 512 colour photograph of Eileen Collins from NASA's Great Images collection. We use rows 10:210 and columns 130:330 of `astronaut` as the face region. All input images are converted to grayscale and resized to 128 × 128; the LBP outputs are 126 × 126 because border pixels are excluded. Thus all histograms use the same 15,876 interior pixels.
 
 ### LBP computation
 
 The LBP function was written with NumPy instead of a library routine. Each pixel is compared with its eight direct neighbours. A neighbour that is at least as bright as the centre gives a 1, and a darker neighbour gives a 0. The eight bits are read clockwise from the top-left neighbour, which is the lowest bit, and together they form a code between 0 and 255. Border pixels do not have eight neighbours, so only interior pixels receive a code and the LBP image is 126 × 126.
 
-The code records only whether each neighbour is brighter or darker, not by how much. An overall change in brightness therefore leaves the codes unchanged. The same property means that weak noise in a smooth area produces codes just as readily as a strong edge does.
+The code records only whether each neighbour is brighter or darker, not by how much. Comparison-based LBP is invariant to monotonic intensity transformations that preserve neighbour comparisons, such as a strictly increasing transform applied without clipping or quantization. Clipping and quantization can introduce ties or change comparisons and therefore change patterns. Weak noise in a smooth area produces codes just as readily as a strong edge does.
 
 ### LBP images
 
@@ -143,10 +159,10 @@ Blob detection was applied to four images from the Intel training set, chosen to
 
 A blob is a region that is brighter or darker than its surroundings. The detector uses the Laplacian of Gaussian (LoG). The image is first smoothed with a Gaussian of width σ, and the Laplacian then measures how much each pixel differs from its neighbourhood. The response is strongest at the centre of a blob whose size matches σ. A bright blob gives a negative response and a dark blob a positive one, so the sign separates the two types.
 
-The algorithm was implemented with the following steps, using OpenCV only for the Gaussian blur and the Laplacian filter:
+The detector's scale search and overlap pruning are implemented in our code. OpenCV provides the Gaussian blur, Laplacian filter and `cv2.dilate` for spatial neighbourhood maxima:
 
 1. Compute the LoG response for 11 values of σ from 2 to 12. Each response is multiplied by σ², which makes responses from different scales comparable.
-2. Find points that are larger than all 26 neighbours in position and scale, and above a threshold. Each such point is a blob with centre (x, y) and radius √2 · σ.
+2. Find points whose response equals the maximum in their 3 × 3 × 3 position-and-scale neighbourhood and is strictly above the threshold. Equal-valued maxima are accepted, rather than requiring a response strictly greater than every neighbour; at the scale endpoints only available adjacent scales are compared. Each such point is a blob with centre (x, y) and radius √2 · σ.
 3. Remove overlapping detections. Blobs are sorted by response strength, and a blob is dropped if more than half of the smaller circle is covered by a stronger blob.
 
 Bright and dark blobs are found separately by running steps 2 and 3 on the negated and the original response. The implementation was checked on synthetic discs with known position and radius, where it returned the correct centres and the nearest available radius. For an ideal disc the response is about 0.74 times the contrast between the disc and its background. The baseline threshold of 0.2 therefore corresponds to a contrast of roughly 0.27 on the [0, 1] intensity scale.
@@ -188,7 +204,7 @@ The overlap limit had little effect here. Without pruning, the rocks image gives
 
 ### Limitations
 
-The detector describes every blob as a circle, so elongated or rectangular objects such as the boat and the window band are represented poorly. It reacts to contrast, not to objects, and can therefore split one object into several blobs or respond to shadows. Detections on the image border are caused by the image edge and not by real structures.
+The detector describes every blob as a circle, so elongated or rectangular objects such as the boat and the window band are represented poorly. It reacts to contrast, not to objects, and can therefore split one object into several blobs or respond to shadows. Border responses can be influenced both by cropped real structures and by the filters' border handling, so a border detection is not automatically an image-boundary artifact. Its size and position require cautious interpretation because part of the surrounding structure is unavailable.
 
 ## Contour Detection
 
@@ -200,10 +216,12 @@ A contour is the closed outline of a connected region. The detector first turns 
 
 1. Smooth the image with a 5 × 5 Gaussian filter to remove small details and noise.
 2. Threshold the image. Pixels brighter than the threshold become white and the rest black. The baseline uses Otsu's method, which chooses the threshold that best separates the image histogram into a dark and a bright group.
-3. Trace the borders with OpenCV's `findContours`, which follows the edge of each white region and of each black hole inside a white region.
+3. Trace the borders with OpenCV's `findContours` using `RETR_LIST`, which returns both outer boundaries of white regions and boundaries of black holes inside them, without preserving their parent/child hierarchy in the returned list.
 4. Discard contours with an area below 15 pixels².
 
 For each contour the area, the perimeter and the centre of mass are calculated. The measurements were checked on synthetic shapes. A rectangle was measured exactly. For a disc of radius 20 the area was 1200 pixels² instead of 1257 and the perimeter 131.9 instead of 125.7, because the outline follows the pixel grid in small steps.
+
+Each contour is drawn with a unique bright colour generated for that image, with a black outline for visibility; the former ten-colour palette is no longer repeated. Contours describe binary-region boundaries, not semantic objects. A single object can yield multiple contours, holes are counted separately, and background regions can contribute contours, so contour count should not automatically be interpreted as object count.
 
 ### Results
 
