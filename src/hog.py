@@ -34,6 +34,7 @@ def load_grayscale_image(image_path):
 
 
 def gradient_magnitude(image):
+    # Separate illustration: scikit-image HOG computes its own gradients.
     gradient_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
     gradient_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
     magnitude = np.hypot(gradient_x, gradient_y)
@@ -117,6 +118,7 @@ def save_parameter_comparison(image, output_directory):
 
 
 def baseline_orientation_distribution(image):
+    # Relative descriptor strength after block normalization, not edge counts.
     feature_blocks = hog(
         image,
         orientations=BASELINE["orientations"],
@@ -172,6 +174,7 @@ def main():
         / "seg_train"
     )
     image_paths = {
+        "simple_sea": dataset_directory / "sea" / "10399.jpg",
         "building": dataset_directory / "buildings" / "1001.jpg",
         "street": dataset_directory / "street" / "10019.jpg",
         "forest": dataset_directory / "forest" / "10037.jpg",
