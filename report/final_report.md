@@ -158,7 +158,7 @@ Smaller cells retain finer spatial detail; larger cells merge local patterns. Mo
 
 Our NumPy function `compute_lbp` compares each centre pixel with its eight direct neighbours. A neighbour at least as bright sets a 1; otherwise it sets a 0 [1]. Bits run clockwise from the top-left neighbour, assigned the lowest bit, producing codes 0–255. The separate function `lbp_histogram` counts these codes. Input images are 128 × 128; skipping borders produces 126 × 126 LBP images and 15,876 codes each.
 
-Figure 9 displays the natural scene, regular texture and face, with their LBP outputs and histograms. The histograms describe the frequency of local texture patterns, but discard their positions [1]. Uniform codes have at most two circular bit transitions [5]. Table 5 includes their share and histogram entropy, which measures how broadly codes are distributed.
+Figure 9 displays the natural scene, regular texture and face, with their LBP outputs and histograms. The histograms describe the frequency of local texture patterns, but discard their positions [1]. Uniform codes have at most two circular bit transitions [5]. Only 58 of the 256 codes are uniform, so a share far above 23% means that simple structures such as flat areas, edges and corners dominate. Table 5 includes their share and histogram entropy, which measures how broadly codes are distributed.
 
 ![Forest LBP and histogram](../results/lbp/forest_lbp.png)
 
@@ -176,7 +176,7 @@ Figure 9 displays the natural scene, regular texture and face, with their LBP ou
 | Brick | 86.00 | 5.7860 | 255 (16.57%), 30 (4.32%), 2 (3.71%) |
 | Face | 84.71 | 6.3520 | 255 (9.54%), 135 (3.92%), 240 (3.45%) |
 
-Brick has the most concentrated histogram, consistent with repeated straight joints and smooth surfaces after resizing. Forest uses all 256 codes and has the highest entropy, reflecting varied neighbourhoods. The face lies between them: smooth shading mixes with curved facial boundaries. Code 255 dominates all three and means no neighbour is darker than the centre, occurring in flat regions and local minima.
+Brick has the most concentrated histogram, consistent with repeated straight joints and smooth surfaces after resizing. Its second most frequent code, 30 (`00011110`), has four adjacent neighbours set, which is the pattern of a straight edge. Forest uses all 256 codes and has the highest entropy, reflecting varied neighbourhoods. Code 0, where the centre is brighter than every neighbour, is nearly as frequent there as 255 and reflects small bright specks of light between leaves; no other code reaches 2%, so no edge direction dominates. The face lies between them: smooth shading mixes with curved facial boundaries. Its edge codes 135 (`10000111`) and 240 (`11110000`) also have four adjacent neighbours set, but on different sides of the centre. Code 255 dominates all three and means no neighbour is darker than the centre, occurring in flat regions and local minima.
 
 LBP ignores contrast magnitude, so weak noise can change codes as readily as strong texture. Its comparison-based encoding is invariant to monotonic grayscale transformations that preserve neighbour comparisons [5], but clipping and quantization can change patterns. Resizing changes the texture scale, and our basic codes depend on rotation. The brick surface becomes smoother when reduced from 512 × 512, so its concentrated histogram partly reflects preprocessing rather than texture alone.
 
@@ -184,7 +184,7 @@ LBP ignores contrast magnitude, so weak noise can change codes as readily as str
 
 Blob detection locates image regions that differ in intensity from their surroundings [1]. Scale selection compares normalized derivative responses across scales to identify structures at characteristic sizes [7]. Our detector constructs the scale-normalized Laplacian of Gaussian response, σ²∇²(Gσ * I), for 11 scales from σ = 2 to 12. Multiplication by σ² compensates for the scale dependence of derivative magnitude, making responses at different smoothing levels comparable. OpenCV supplies Gaussian blur, the Laplacian and `cv2.dilate` for spatial maxima. We compare adjacent scales and retain responses equal to the neighbourhood maximum and strictly above threshold 0.2. Negating the response detects bright blobs; the original response detects dark blobs. Radius is estimated as √2σ.
 
-Within each polarity, detections are ranked by response. We suppress weaker circles when overlap exceeds half the smaller circle's area. Figure 10 shows baseline detections on the original images; Table 6 reports sizes and example positions. Full positions, scales and responses are provided in [blobs.csv](../results/blob/blobs.csv). Coordinates start at the top-left, with x increasing rightwards and y downwards.
+Within each polarity, detections are ranked by response. We suppress weaker circles when overlap exceeds half the smaller circle's area. Figure 10 shows baseline detections on the original images; Table 6 reports sizes and example positions. Full positions, scales and responses are provided in [blobs.csv](https://github.com/TrymJohnsen/Image-Processing-Scene-Analysis/blob/main/results/blob/blobs.csv). Coordinates start at the top-left, with x increasing rightwards and y downwards.
 
 ![Blob and contour comparison](../results/contour/blob_comparison.png)
 
@@ -211,7 +211,7 @@ Lowering the threshold to 0.15 increases detections from 23 to 71; raising it to
 
 ## 6. Contour Detection
 
-Contour detection traces boundaries after grayscale threshold or edge processing [1]. We use Otsu thresholding after 5 × 5 Gaussian smoothing on the same four images used for blobs. Pixels above the threshold become white and others black. OpenCV's `findContours` uses `RETR_LIST` and `CHAIN_APPROX_NONE`; contours smaller than 15 pixels² are discarded. `RETR_LIST` returns outer boundaries and holes without hierarchical relationships [6]. Area and perimeter are measured with `contourArea` and `arcLength` [6]. Figure 10 uses a unique visible colour for every contour; Table 7 summarizes measurements. Individual measurements are available in [contours.csv](../results/contour/contours.csv).
+Contour detection traces boundaries after grayscale threshold or edge processing [1]. We use Otsu thresholding after 5 × 5 Gaussian smoothing on the same four images used for blobs. Pixels above the threshold become white and others black. OpenCV's `findContours` uses `RETR_LIST` and `CHAIN_APPROX_NONE`; contours smaller than 15 pixels² are discarded. `RETR_LIST` returns outer boundaries and holes without hierarchical relationships [6]. Area and perimeter are measured with `contourArea` and `arcLength` [6]. Figure 10 uses a unique visible colour for every contour; Table 7 summarizes measurements. Individual measurements are available in [contours.csv](https://github.com/TrymJohnsen/Image-Processing-Scene-Analysis/blob/main/results/contour/contours.csv).
 
 *Table 7. Baseline contour statistics. Areas are in pixels² and perimeters in pixels.*
 
@@ -224,7 +224,9 @@ Contour detection traces boundaries after grayscale threshold or edge processing
 
 Every image includes a large background-region contour. Contour count is therefore not object count, and holes can add boundaries for one object. For the five separate windows, contours preserve rectangular outlines while blobs describe centres and approximate scales. The window band merges with a larger boundary. Contours follow the boat hull better than a circle, but also outline a broad region caused by uneven brightness.
 
-For lamps, blobs separate many bright spots while thresholded lamps, shop fronts and illuminated ground merge. Neither method isolates individual stones: blobs mark contrast peaks and contours follow bright patches. Blobs are preferable for locating compact light sources; contours are preferable for measuring separated windows' shapes and areas.
+For lamps, blobs separate many bright spots while thresholded lamps, shop fronts and illuminated ground merge. Neither method isolates individual stones: blobs mark contrast peaks and contours follow bright patches.
+
+Blob detection compares every point with its local surroundings, so gradual brightness changes do not disturb it, bright spots that lie close together stay separate, and several sizes are searched at once. Its limitations are that every blob is a circle, that sizes are restricted to the scales searched, and that it gives no shape information. Contour detection returns the actual outline of a region of any shape, together with its area and perimeter. Its main limitation is the single global threshold: regions that touch in the binary image merge, uneven lighting creates contours that are not objects, and the background itself is returned as a contour.
 
 Figure 12 varies threshold, smoothing and minimum area on the rocks image to inspect changes in the binary-region boundaries.
 
@@ -233,6 +235,8 @@ Figure 12 varies threshold, smoothing and minimum area on the rocks image to ins
 *Figure 12. Effects of threshold, smoothing and minimum area on rocks contours.*
 
 The count changes from 17 at baseline to 13 with threshold 80 and two with 160. Threshold changes can split or merge regions, so counts need not decrease monotonically. Removing blur gives 33 contours; 11 × 11 blur gives ten. Removing the area filter gives 63. Smoothing suppresses small irregularities but can merge structures, while area filtering removes small boundaries. A single global threshold remains sensitive to uneven illumination: background regions can be outlined even when their boundaries have no object meaning.
+
+Blob detection is more suitable for finding or counting small, compact structures, especially under uneven lighting or when they lie close together. The street lamps are an example; stars or cells under a microscope would be similar cases. Contour detection is more suitable when well-separated objects stand out from an even background and their shape or size matters, such as the windows on the wall: a window's area can be measured from its contour, but not from a blob.
 
 ## References
 
@@ -252,4 +256,4 @@ The count changes from 17 at baseline to 13 with threshold 80 and two with 160. 
 
 ## AI declaration
 
-OpenAI ChatGPT was used as a helper for code development, debugging, figure refinement, report editing, and discussion. The authors made the methodological choices, carried out the analysis, and developed the final interpretations. 
+OpenAI ChatGPT and Anthropic Claude were used as helpers for code development, debugging, figure refinement, report review and editing, and discussion. The authors made the methodological choices, carried out the analysis, and developed the final interpretations. 

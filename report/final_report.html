@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assignment 2: Image Processing</title>
+<style>
+body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; line-height: 1.45;
+       max-width: 17cm; margin: 2cm auto; color: #222; }
+h1, h2 { border-bottom: 1px solid #ccc; padding-bottom: .2em; }
+table { border-collapse: collapse; margin: 1em 0; font-size: 9.5pt; }
+th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+th { background: #f2f2f2; }
+code { background: #f4f4f4; padding: 1px 4px; font-size: 0.864em; }
+pre { background: #f4f4f4; padding: 8px; font-size: 9pt; }
+pre code { padding: 0; font-size: inherit; }
+img { max-width: 100%; }
+em { color: #555; }
+hr { border: 0; border-top: 1px solid #ccc; }
+/* Keep headings and captions on the same page as their section, figure or table. */
+h1, h2, h3, p:has(> img):has(+ p > em), p:has(+ table) { break-after: avoid; }
+table { break-inside: avoid; }
+</style>
+</head>
+<body>
+<h1>Assignment 2: Image Processing</h1>
+<p>Eivind Systad Geiran and Trym Andreas Johnsen - IT3212</p>
+<p>Code: <a href="https://github.com/TrymJohnsen/Image-Processing-Scene-Analysis">Image Processing Scene Analysis</a></p>
+<h2>The dataset</h2>
+<p>We use the Intel Image Classification dataset supplied through Blackboard. Its six outdoor scene categories include buildings, forests, glaciers, mountains, sea and streets. Different image types are selected to expose differences in frequency content, texture and shape.</p>
+<p>Fourier experiments use <code>buildings/1001.jpg</code> at 150 × 150 pixels. PCA uses 200 randomly selected building images, with seed 42. HOG uses <code>sea/10399.jpg</code>, <code>buildings/1001.jpg</code>, <code>street/10019.jpg</code> and <code>forest/10037.jpg</code>, resized to 128 × 128. Blob and contour detection share four original 150 × 150 images: <code>sea/10399.jpg</code> (boat), <code>buildings/10310.jpg</code> (windows), <code>street/10015.jpg</code> (lamps) and <code>sea/1021.jpg</code> (rocks).</p>
+<p>For LBP, we load <code>brick</code> and <code>astronaut</code> through scikit-image, alongside the Intel forest image. The library documents CC0Textures as the brick image's original source and NASA as the source of the Eileen Collins photograph [4]. We crop the face using rows 10:210 and columns 130:330. Processing uses grayscale; detection overlays retain colour. PCA and HOG intensities are scaled to [0, 1]; Fourier errors use [0, 255].</p>
+<h2>1. Fourier Transform</h2>
+<h3>1.1 Frequency spectrum</h3>
+<p>The spatial image stores intensities at pixel locations. Its two-dimensional discrete Fourier transform (DFT) represents spatial frequency components [1]. We compute it with NumPy's <code>fft2</code>; <code>fftshift</code> moves zero frequency to the centre [2]. Plotting <code>log(1 + |F|)</code> makes weaker magnitudes visible.</p>
+<p>Figure 1 concentrates energy near the centre, corresponding to gradual intensity changes and large structures. Its horizontal and vertical frequency patterns are consistent with repeated floors, windows and columns. The magnitude spectrum describes frequency strength and direction, but does not directly locate individual objects.</p>
+<p><img alt="Building and Fourier magnitude spectrum" src="../results/fourier/fourier_spectrum.png" /></p>
+<p><em>Figure 1. Original building image and centred logarithmic DFT magnitude.</em></p>
+<h3>1.2 Low-pass filtering</h3>
+<p>We add Gaussian noise with mean 0, standard deviation 25 and seed 42, clipping intensities to [0, 255]. Circular masks retain frequencies within radii 10, 20, 35, 50 and 70. Removing higher frequencies reduces noise, but also removes genuine edges. Figure 2 and Table 1 compare inverse-transform reconstructions with the clean original. MSE averages squared pixel differences after clipping filtered images.</p>
+<p><img alt="Low-pass comparisons" src="../results/fourier/low_pass_comparison.png" /></p>
+<p><em>Figure 2. Clean image, fixed noisy image and five low-pass reconstructions.</em></p>
+<p><em>Table 1. Low-pass MSE against the clean original.</em></p>
+<table>
+<thead>
+<tr>
+<th>Image/filter</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">Change from noisy MSE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Noisy, unfiltered</td>
+<td style="text-align: right;">596.65</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>Radius 10</td>
+<td style="text-align: right;">1412.22</td>
+<td style="text-align: right;">+815.57</td>
+</tr>
+<tr>
+<td>Radius 20</td>
+<td style="text-align: right;">954.71</td>
+<td style="text-align: right;">+358.06</td>
+</tr>
+<tr>
+<td>Radius 35</td>
+<td style="text-align: right;">724.83</td>
+<td style="text-align: right;">+128.18</td>
+</tr>
+<tr>
+<td>Radius 50</td>
+<td style="text-align: right;">563.39</td>
+<td style="text-align: right;">−33.26</td>
+</tr>
+<tr>
+<td>Radius 70</td>
+<td style="text-align: right;">492.88</td>
+<td style="text-align: right;">−103.77</td>
+</tr>
+</tbody>
+</table>
+<p>Radius 10 heavily blurs windows and railings. Radii 20 and 35 restore progressively more structure. All three look smoother than the noisy image while increasing MSE: the lost building detail outweighs the noise reduction. Radii 50 and 70 preserve finer edges and improve MSE, although noise remains visible. Radius 70 is best among the tested values. The useful cutoff depends on the image, noise level and desired balance between smoothing and detail preservation. MSE measures pixel error rather than perceptual quality, so we inspect both the figure and the numerical changes.</p>
+<h3>1.3 High-pass filtering</h3>
+<p>Complementary circular masks with radii 10, 20 and 35 suppress low frequencies in the clean image. Figure 3 displays absolute inverse-transform responses on a shared scale. Smooth regions and overall brightness disappear because they depend mainly on low frequencies.</p>
+<p><img alt="High-pass comparisons" src="../results/fourier/high_pass_comparison.png" /></p>
+<p><em>Figure 3. Absolute high-pass responses for three cutoff radii.</em></p>
+<p>Radius 10 retains broad outlines and texture. At 20, windows, columns and overhead wires stand out; at 35, fine transitions dominate and wider structures weaken. These are edge-like responses, rather than normally sharpened photographs. High-pass filtering would also retain high-frequency noise. The abrupt cutoff can cause ringing near strong edges.</p>
+<h3>1.4 Fourier compression</h3>
+<p>We rank conjugate groups by mean coefficient magnitude and retain the strongest groups. Both members of each conjugate pair are kept, preserving the symmetry required for a real reconstruction [2]. Self-conjugate coefficients count once. Completing a pair can exceed the requested count by one, so Table 2 reports actual percentages. Symmetry and imaginary residuals are checked before using the real part; the largest residual is 7.21 × 10⁻¹⁴ intensity units.</p>
+<p><img alt="Fourier compression comparisons" src="../results/fourier/compression_comparison.png" /></p>
+<p><em>Figure 4. Reconstructions using increasing proportions of Fourier coefficients.</em></p>
+<p><em>Table 2. Fourier reconstruction error and total-to-retained coefficient ratio.</em></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Requested</th>
+<th style="text-align: right;">Actual retained</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">Coefficient ratio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1%</td>
+<td style="text-align: right;">1.0000%</td>
+<td style="text-align: right;">1118.34</td>
+<td style="text-align: right;">100.00:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">5%</td>
+<td style="text-align: right;">5.0044%</td>
+<td style="text-align: right;">613.75</td>
+<td style="text-align: right;">19.98:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">10%</td>
+<td style="text-align: right;">10.0000%</td>
+<td style="text-align: right;">395.36</td>
+<td style="text-align: right;">10.00:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">20%</td>
+<td style="text-align: right;">20.0044%</td>
+<td style="text-align: right;">206.67</td>
+<td style="text-align: right;">5.00:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">50%</td>
+<td style="text-align: right;">50.0044%</td>
+<td style="text-align: right;">46.48</td>
+<td style="text-align: right;">2.00:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">100.0000%</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">1.00:1</td>
+</tr>
+</tbody>
+</table>
+<p>Figure 4 remains recognisable at 1%, but strong blur and line patterns replace fine details. At 5–10%, floors and windows become clearer. Approximately 20% preserves major structure with fivefold coefficient reduction; 50% recovers much more edge detail. MSE decreases throughout, reaching numerical round-off at full retention. Compression MSE uses unclipped reconstructions; only the displayed images are clipped. These ratios count coefficients, not compressed file bytes: values, positions, precision and encoding overhead also require storage.</p>
+<h2>2. Principal Component Analysis</h2>
+<p>We use buildings because façades, windows and sky provide recurring structure while viewpoint and lighting still vary. Mixing unrelated categories would instead introduce variation between scene types. Each image is converted to grayscale, resized to 64 × 64 and divided by 255. Flattening produces a 200 × 4096 matrix, with images as rows and pixels as columns. Our NumPy implementation subtracts the pixel-wise mean to obtain centred data, Xc.</p>
+<p>Pixel covariance is C = XcᵀXc / (n − 1), with n = 200. Instead, we diagonalize G = XcXcᵀ / (n − 1), a 200 × 200 matrix rather than 4096 × 4096. The matrices share their nonzero eigenvalues, allowing the smaller eigensystem to recover the same PCA directions. Its eigenvectors are mapped into pixel space and normalized, yielding the principal directions of C. Eigenvalues and corresponding directions are sorted in descending order. Projection onto the first k directions gives k coefficients per image; reconstruction multiplies by those directions and restores the mean [1]. The functions <code>fit_pca</code>, <code>project</code> and <code>reconstruct</code> implement this pipeline.</p>
+<p>Figure 5 compares three training images reconstructed with increasing k. Display values are clipped to [0, 1].</p>
+<p><img alt="PCA reconstruction comparison" src="../results/pca/reconstruction_comparison.png" /></p>
+<p><em>Figure 5. Three training images reconstructed with increasing numbers of components.</em></p>
+<p>Figure 6 plots cumulative explained variance and marks the first component count reaching 90%.</p>
+<p><img alt="PCA cumulative explained variance" src="../results/pca/cumulative_explained_variance.png" /></p>
+<p><em>Figure 6. Cumulative explained variance, with the selected 90% criterion marked.</em></p>
+<p>Table 3 reports MSE over all 200 images using unclipped reconstructions.</p>
+<p><em>Table 3. PCA variance, reconstruction error and per-image dimensionality reduction.</em></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">k</th>
+<th style="text-align: right;">Explained variance (%)</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">4096/k</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">23.0208</td>
+<td style="text-align: right;">0.04540999</td>
+<td style="text-align: right;">4096.00:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">50.4459</td>
+<td style="text-align: right;">0.02923193</td>
+<td style="text-align: right;">819.20:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">59.2781</td>
+<td style="text-align: right;">0.02402183</td>
+<td style="text-align: right;">409.60:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">25</td>
+<td style="text-align: right;">72.1147</td>
+<td style="text-align: right;">0.01644952</td>
+<td style="text-align: right;">163.84:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">82.3081</td>
+<td style="text-align: right;">0.01043643</td>
+<td style="text-align: right;">81.92:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">85</td>
+<td style="text-align: right;">90.0621</td>
+<td style="text-align: right;">0.00586236</td>
+<td style="text-align: right;">48.19:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">92.3104</td>
+<td style="text-align: right;">0.00453607</td>
+<td style="text-align: right;">40.96:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">97.3965</td>
+<td style="text-align: right;">0.00153580</td>
+<td style="text-align: right;">27.31:1</td>
+</tr>
+<tr>
+<td style="text-align: right;">199</td>
+<td style="text-align: right;">100.0000</td>
+<td style="text-align: right;">0.00000000</td>
+<td style="text-align: right;">20.58:1</td>
+</tr>
+</tbody>
+</table>
+<p>At k = 1, only broad intensity structure survives. At 10, coarse building layouts return; at 50, buildings are recognisable but blurred. Increasing to 85 and 100 restores more structure while still losing fine texture. Gains diminish as later components capture less variance.</p>
+<p>The computed minimum reaching 90% variance is k = 85, a selected compromise using a 90% explained-variance criterion. It retains 90.0621%, with MSE 0.00586236 and approximately 48.19:1 dimensionality reduction per image. This criterion makes the choice explicit without claiming universal optimality.</p>
+<p>Fitting and evaluation use the same 200 images. Near-zero MSE with all 199 meaningful components therefore shows training-set reconstruction, not generalization. Resizing removes fine detail, and unaligned buildings mean PCA also models viewpoint and sky placement. The 4096/k ratio excludes the shared PCA basis and mean image, which must also be stored. It is not complete storage compression. PCA MSE uses normalized intensities, so its numerical values cannot be compared directly with Fourier MSE.</p>
+<h2>3. HOG Features</h2>
+<p>HOG describes local shape through gradient-weighted orientation histograms within cells. Normalization over overlapping blocks reduces sensitivity to local contrast; concatenating these histograms produces the descriptor [1]. Our script uses scikit-image HOG with L2-Hys block normalization [3]. The displayed Sobel magnitude is a separate visualization; HOG computes its own gradients internally.</p>
+<p>Figure 7 compares four scenes using nine orientation bins, 8 × 8-pixel cells and 2 × 2-cell blocks. The sea has relatively sparse strong structure around the horizon and boat, although weak water texture still contributes. The building has repeated horizontal and vertical patterns. The street combines vertical façades with perspective diagonals. The forest has dense, irregular responses from branches, trunks and ground texture.</p>
+<p><img alt="HOG sea scene" src="../results/hog/simple_sea_comparison.png" /></p>
+<p><img alt="HOG building scene" src="../results/hog/building_comparison.png" /></p>
+<p><img alt="HOG street scene" src="../results/hog/street_comparison.png" /></p>
+<p><img alt="HOG forest scene" src="../results/hog/forest_comparison.png" /></p>
+<p><em>Figure 7. Sea, building, street and forest, from top to bottom. Each row shows grayscale input, Sobel magnitude and HOG visualization.</em></p>
+<p>Summing normalized descriptor values gives relative HOG strength, not percentages of physical edges. The sea and building place 29.9% and 23.5% respectively in the 90° gradient bin. The street places 36.4% in the bins nearest 0° and 180°; forest shares range from 10.1% to 13.2%. Gradient directions are perpendicular to image edges.</p>
+<p>Figure 8 and Table 4 vary one baseline parameter at a time on the building.</p>
+<p><img alt="HOG parameter comparison" src="../results/hog/parameter_comparison.png" /></p>
+<p><em>Figure 8. Cell size, block size and orientation-bin experiments on the building.</em></p>
+<p><em>Table 4. HOG descriptor lengths for 128 × 128 inputs.</em></p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th style="text-align: right;">Bins</th>
+<th>Cell pixels</th>
+<th>Block cells</th>
+<th style="text-align: right;">Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Baseline</td>
+<td style="text-align: right;">9</td>
+<td>8 × 8</td>
+<td>2 × 2</td>
+<td style="text-align: right;">8100</td>
+</tr>
+<tr>
+<td>Smaller cells</td>
+<td style="text-align: right;">9</td>
+<td>4 × 4</td>
+<td>2 × 2</td>
+<td style="text-align: right;">34596</td>
+</tr>
+<tr>
+<td>Larger cells</td>
+<td style="text-align: right;">9</td>
+<td>16 × 16</td>
+<td>2 × 2</td>
+<td style="text-align: right;">1764</td>
+</tr>
+<tr>
+<td>Smaller blocks</td>
+<td style="text-align: right;">9</td>
+<td>8 × 8</td>
+<td>1 × 1</td>
+<td style="text-align: right;">2304</td>
+</tr>
+<tr>
+<td>Larger blocks</td>
+<td style="text-align: right;">9</td>
+<td>8 × 8</td>
+<td>3 × 3</td>
+<td style="text-align: right;">15876</td>
+</tr>
+<tr>
+<td>Fewer bins</td>
+<td style="text-align: right;">6</td>
+<td>8 × 8</td>
+<td>2 × 2</td>
+<td style="text-align: right;">5400</td>
+</tr>
+<tr>
+<td>More bins</td>
+<td style="text-align: right;">12</td>
+<td>8 × 8</td>
+<td>2 × 2</td>
+<td style="text-align: right;">10800</td>
+</tr>
+</tbody>
+</table>
+<p>Smaller cells retain finer spatial detail; larger cells merge local patterns. More bins refine directional resolution. Larger blocks change normalization context and descriptor length, but not the displayed cell-histogram pattern, which precedes block normalization [3]. Overlapping blocks repeat cell information, so descriptor growth does not imply proportionally more information. More spatial or directional detail generally costs a larger descriptor and more computation. The baseline keeps recognisable building structure without the longest descriptor. No classifier is trained, so these comparisons assess representation rather than predictive accuracy.</p>
+<h2>4. Local Binary Patterns</h2>
+<p>Our NumPy function <code>compute_lbp</code> compares each centre pixel with its eight direct neighbours. A neighbour at least as bright sets a 1; otherwise it sets a 0 [1]. Bits run clockwise from the top-left neighbour, assigned the lowest bit, producing codes 0–255. The separate function <code>lbp_histogram</code> counts these codes. Input images are 128 × 128; skipping borders produces 126 × 126 LBP images and 15,876 codes each.</p>
+<p>Figure 9 displays the natural scene, regular texture and face, with their LBP outputs and histograms. The histograms describe the frequency of local texture patterns, but discard their positions [1]. Uniform codes have at most two circular bit transitions [5]. Only 58 of the 256 codes are uniform, so a share far above 23% means that simple structures such as flat areas, edges and corners dominate. Table 5 includes their share and histogram entropy, which measures how broadly codes are distributed.</p>
+<p><img alt="Forest LBP and histogram" src="../results/lbp/forest_lbp.png" /></p>
+<p><img alt="Brick LBP and histogram" src="../results/lbp/brick_lbp.png" /></p>
+<p><img alt="Face LBP and histogram" src="../results/lbp/face_lbp.png" /></p>
+<p><em>Figure 9. Forest, brick and face, from top to bottom: input, LBP image and normalized histogram.</em></p>
+<p><em>Table 5. LBP texture summaries.</em></p>
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th style="text-align: right;">Uniform patterns (%)</th>
+<th style="text-align: right;">Entropy (bits)</th>
+<th>Three most frequent codes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Forest</td>
+<td style="text-align: right;">70.49</td>
+<td style="text-align: right;">6.9247</td>
+<td>255 (7.74%), 0 (6.68%), 60 (1.72%)</td>
+</tr>
+<tr>
+<td>Brick</td>
+<td style="text-align: right;">86.00</td>
+<td style="text-align: right;">5.7860</td>
+<td>255 (16.57%), 30 (4.32%), 2 (3.71%)</td>
+</tr>
+<tr>
+<td>Face</td>
+<td style="text-align: right;">84.71</td>
+<td style="text-align: right;">6.3520</td>
+<td>255 (9.54%), 135 (3.92%), 240 (3.45%)</td>
+</tr>
+</tbody>
+</table>
+<p>Brick has the most concentrated histogram, consistent with repeated straight joints and smooth surfaces after resizing. Its second most frequent code, 30 (<code>00011110</code>), has four adjacent neighbours set, which is the pattern of a straight edge. Forest uses all 256 codes and has the highest entropy, reflecting varied neighbourhoods. Code 0, where the centre is brighter than every neighbour, is nearly as frequent there as 255 and reflects small bright specks of light between leaves; no other code reaches 2%, so no edge direction dominates. The face lies between them: smooth shading mixes with curved facial boundaries. Its edge codes 135 (<code>10000111</code>) and 240 (<code>11110000</code>) also have four adjacent neighbours set, but on different sides of the centre. Code 255 dominates all three and means no neighbour is darker than the centre, occurring in flat regions and local minima.</p>
+<p>LBP ignores contrast magnitude, so weak noise can change codes as readily as strong texture. Its comparison-based encoding is invariant to monotonic grayscale transformations that preserve neighbour comparisons [5], but clipping and quantization can change patterns. Resizing changes the texture scale, and our basic codes depend on rotation. The brick surface becomes smoother when reduced from 512 × 512, so its concentrated histogram partly reflects preprocessing rather than texture alone.</p>
+<h2>5. Blob Detection</h2>
+<p>Blob detection locates image regions that differ in intensity from their surroundings [1]. Scale selection compares normalized derivative responses across scales to identify structures at characteristic sizes [7]. Our detector constructs the scale-normalized Laplacian of Gaussian response, σ²∇²(Gσ * I), for 11 scales from σ = 2 to 12. Multiplication by σ² compensates for the scale dependence of derivative magnitude, making responses at different smoothing levels comparable. OpenCV supplies Gaussian blur, the Laplacian and <code>cv2.dilate</code> for spatial maxima. We compare adjacent scales and retain responses equal to the neighbourhood maximum and strictly above threshold 0.2. Negating the response detects bright blobs; the original response detects dark blobs. Radius is estimated as √2σ.</p>
+<p>Within each polarity, detections are ranked by response. We suppress weaker circles when overlap exceeds half the smaller circle's area. Figure 10 shows baseline detections on the original images; Table 6 reports sizes and example positions. Full positions, scales and responses are provided in <a href="https://github.com/TrymJohnsen/Image-Processing-Scene-Analysis/blob/main/results/blob/blobs.csv">blobs.csv</a>. Coordinates start at the top-left, with x increasing rightwards and y downwards.</p>
+<p><img alt="Blob and contour comparison" src="../results/contour/blob_comparison.png" /></p>
+<p><em>Figure 10. Boat, windows, lamps and rocks. Top: bright blobs in yellow and dark blobs in pink. Bottom: contours with a unique colour per contour.</em></p>
+<p><em>Table 6. Baseline blob statistics; example centres identify the strongest response in each image.</em></p>
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th>Count (bright/dark)</th>
+<th>Radius min/median/max (px)</th>
+<th>Example centre (x, y)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Boat</td>
+<td>1 (0/1)</td>
+<td>4.24 / 4.24 / 4.24</td>
+<td>(79, 81)</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>14 (3/11)</td>
+<td>2.83 / 4.95 / 14.14</td>
+<td>(137, 44)</td>
+</tr>
+<tr>
+<td>Lamps</td>
+<td>22 (21/1)</td>
+<td>2.83 / 2.83 / 2.83</td>
+<td>(80, 15)</td>
+</tr>
+<tr>
+<td>Rocks</td>
+<td>23 (8/15)</td>
+<td>2.83 / 2.83 / 11.31</td>
+<td>(35, 133)</td>
+</tr>
+</tbody>
+</table>
+<p>The boat gives one dark response on its hull. Separate windows are detected, but the long window band produces multiple or oversized responses. Lamps all receive the smallest available radius, so their true sizes are not resolved. Rocks produce responses on shadows, gaps and bright surfaces rather than one detection per stone. Blobs are contrast structures, not semantic objects. Cropped structures and filter border handling can both influence border responses. Our selected images have no annotated blob ground truth, so detection counts alone cannot establish accuracy.</p>
+<p>Figure 11 varies threshold, scale range and overlap suppression on the rocks image, keeping the other baseline settings fixed.</p>
+<p><img alt="Blob parameter comparison" src="../results/blob/parameter_comparison.png" /></p>
+<p><em>Figure 11. Effects of threshold, scale range and overlap suppression on rocks.</em></p>
+<p>Lowering the threshold to 0.15 increases detections from 23 to 71; raising it to 0.25 leaves three. Low thresholds accept weak texture, while high thresholds discard moderate-contrast structures. Restricting σ to 2–4 gives 22 detections; σ = 6–12 gives three broader responses. Disabling overlap pruning gives 24. Threshold and scale matter more than overlap for this example.</p>
+<h2>6. Contour Detection</h2>
+<p>Contour detection traces boundaries after grayscale threshold or edge processing [1]. We use Otsu thresholding after 5 × 5 Gaussian smoothing on the same four images used for blobs. Pixels above the threshold become white and others black. OpenCV's <code>findContours</code> uses <code>RETR_LIST</code> and <code>CHAIN_APPROX_NONE</code>; contours smaller than 15 pixels² are discarded. <code>RETR_LIST</code> returns outer boundaries and holes without hierarchical relationships [6]. Area and perimeter are measured with <code>contourArea</code> and <code>arcLength</code> [6]. Figure 10 uses a unique visible colour for every contour; Table 7 summarizes measurements. Individual measurements are available in <a href="https://github.com/TrymJohnsen/Image-Processing-Scene-Analysis/blob/main/results/contour/contours.csv">contours.csv</a>.</p>
+<p><em>Table 7. Baseline contour statistics. Areas are in pixels² and perimeters in pixels.</em></p>
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th style="text-align: right;">Otsu threshold</th>
+<th style="text-align: right;">Count</th>
+<th>Area median/max</th>
+<th>Perimeter median/max</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Boat</td>
+<td style="text-align: right;">129</td>
+<td style="text-align: right;">2</td>
+<td>6724.5 / 13343.5</td>
+<td>260.4 / 468.3</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td style="text-align: right;">101</td>
+<td style="text-align: right;">6</td>
+<td>124.0 / 14060.0</td>
+<td>43.7 / 946.5</td>
+</tr>
+<tr>
+<td>Lamps</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">18</td>
+<td>29.8 / 7539.0</td>
+<td>22.7 / 1293.3</td>
+</tr>
+<tr>
+<td>Rocks</td>
+<td style="text-align: right;">117</td>
+<td style="text-align: right;">17</td>
+<td>40.0 / 10698.0</td>
+<td>40.1 / 608.6</td>
+</tr>
+</tbody>
+</table>
+<p>Every image includes a large background-region contour. Contour count is therefore not object count, and holes can add boundaries for one object. For the five separate windows, contours preserve rectangular outlines while blobs describe centres and approximate scales. The window band merges with a larger boundary. Contours follow the boat hull better than a circle, but also outline a broad region caused by uneven brightness.</p>
+<p>For lamps, blobs separate many bright spots while thresholded lamps, shop fronts and illuminated ground merge. Neither method isolates individual stones: blobs mark contrast peaks and contours follow bright patches.</p>
+<p>Blob detection compares every point with its local surroundings, so gradual brightness changes do not disturb it, bright spots that lie close together stay separate, and several sizes are searched at once. Its limitations are that every blob is a circle, that sizes are restricted to the scales searched, and that it gives no shape information. Contour detection returns the actual outline of a region of any shape, together with its area and perimeter. Its main limitation is the single global threshold: regions that touch in the binary image merge, uneven lighting creates contours that are not objects, and the background itself is returned as a contour.</p>
+<p>Figure 12 varies threshold, smoothing and minimum area on the rocks image to inspect changes in the binary-region boundaries.</p>
+<p><img alt="Contour parameter comparison" src="../results/contour/parameter_comparison.png" /></p>
+<p><em>Figure 12. Effects of threshold, smoothing and minimum area on rocks contours.</em></p>
+<p>The count changes from 17 at baseline to 13 with threshold 80 and two with 160. Threshold changes can split or merge regions, so counts need not decrease monotonically. Removing blur gives 33 contours; 11 × 11 blur gives ten. Removing the area filter gives 63. Smoothing suppresses small irregularities but can merge structures, while area filtering removes small boundaries. A single global threshold remains sensitive to uneven illumination: background regions can be outlined even when their boundaries have no object meaning.</p>
+<p>Blob detection is more suitable for finding or counting small, compact structures, especially under uneven lighting or when they lie close together. The street lamps are an example; stars or cells under a microscope would be similar cases. Contour detection is more suitable when well-separated objects stand out from an even background and their shape or size matters, such as the windows on the wall: a window's area can be measured from its contour, but not from a blob.</p>
+<h2>References</h2>
+<p>[1] K. Sharma, "IT3212: Knowledge Extraction from Data," course lecture slides, Department of Computer and Information Science, Norwegian University of Science and Technology (NTNU), 2026.</p>
+<p>[2] NumPy developers. <a href="https://numpy.org/doc/stable/reference/routines.fft.html">Discrete Fourier Transform documentation</a>.</p>
+<p>[3] scikit-image developers. <a href="https://scikit-image.org/docs/stable/api/skimage.feature.html#skimage.feature.hog">Histogram of Oriented Gradients</a>.</p>
+<p>[4] scikit-image developers. <a href="https://scikit-image.org/docs/stable/api/skimage.data.html">Example image documentation</a>.</p>
+<p>[5] T. Ojala, M. Pietikäinen and T. Mäenpää, "Multiresolution gray-scale and rotation invariant texture classification with local binary patterns," <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>, vol. 24, no. 7, pp. 971–987, July 2002. DOI: <a href="https://doi.org/10.1109/TPAMI.2002.1017623">10.1109/TPAMI.2002.1017623</a>.</p>
+<p>[6] OpenCV developers. <a href="https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html">Structural Analysis and Shape Descriptors</a>.</p>
+<p>[7] T. Lindeberg, "Feature Detection with Automatic Scale Selection," <em>International Journal of Computer Vision</em>, vol. 30, no. 2, pp. 79–116, 1998. DOI: <a href="https://doi.org/10.1023/A:1008045108935">10.1023/A:1008045108935</a>.</p>
+<h2>AI declaration</h2>
+<p>OpenAI ChatGPT and Anthropic Claude were used as helpers for code development, debugging, figure refinement, report review and editing, and discussion. The authors made the methodological choices, carried out the analysis, and developed the final interpretations. </p>
+</body>
+</html>
