@@ -4,7 +4,7 @@ Alle seks metoder er implementert og kontrollert etter den tekniske sluttgjennom
 
 ## Datasett
 
-Intel Image Classification var ett av datasettene utdelt på Blackboard. Data ligger lokalt under `data/` og spores ikke i Git. PCA bruker 200 tilfeldig valgte `buildings`-bilder med fast seed, grayscale og 64 × 64 piksler. LBP bruker også scikit-image-bildene `brick` og et ansiktsutsnitt fra `astronaut`; kildene er lenket i arbeidsnotatene.
+Intel Image Classification var ett av datasettene utdelt på Canva. Data ligger lokalt under `data/` og spores ikke i Git. PCA bruker 200 tilfeldig valgte `buildings`-bilder med fast seed, grayscale og 64 × 64 piksler. LBP bruker også scikit-image-bildene `brick` og et ansiktsutsnitt fra `astronaut`; kildene er lenket i arbeidsnotatene.
 
 ## Fourier Transform
 
