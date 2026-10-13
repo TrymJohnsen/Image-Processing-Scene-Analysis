@@ -184,7 +184,7 @@ LBP ignores contrast magnitude, so weak noise can change codes as readily as str
 
 Blob detection locates image regions that differ in intensity from their surroundings [1]. Scale selection compares normalized derivative responses across scales to identify structures at characteristic sizes [7]. Our detector constructs the scale-normalized Laplacian of Gaussian response, σ²∇²(Gσ * I), for 11 scales from σ = 2 to 12. Multiplication by σ² compensates for the scale dependence of derivative magnitude, making responses at different smoothing levels comparable. OpenCV supplies Gaussian blur, the Laplacian and `cv2.dilate` for spatial maxima. We compare adjacent scales and retain responses equal to the neighbourhood maximum and strictly above threshold 0.2. Negating the response detects bright blobs; the original response detects dark blobs. Radius is estimated as √2σ.
 
-Within each polarity, detections are ranked by response. We suppress weaker circles when overlap exceeds half the smaller circle's area. Figure 10 shows baseline detections on the original images; Table 6 reports sizes and example positions. Full positions, scales and responses are provided in [blobs.csv](https://github.com/TrymJohnsen/Image-Processing-Scene-Analysis/blob/main/results/blob/blobs.csv). Coordinates start at the top-left, with x increasing rightwards and y downwards.
+Within each polarity, detections are ranked by response. We suppress weaker circles when overlap exceeds half the smaller circle's area. Figure 10 shows baseline detections on the original images; Table 6 reports sizes and example positions. Coordinates start at the top-left, with x increasing rightwards and y downwards.
 
 ![Blob and contour comparison](../results/contour/blob_comparison.png)
 
@@ -211,7 +211,7 @@ Lowering the threshold to 0.15 increases detections from 23 to 71; raising it to
 
 ## 6. Contour Detection
 
-Contour detection traces boundaries after grayscale threshold or edge processing [1]. We use Otsu thresholding after 5 × 5 Gaussian smoothing on the same four images used for blobs. Pixels above the threshold become white and others black. OpenCV's `findContours` uses `RETR_LIST` and `CHAIN_APPROX_NONE`; contours smaller than 15 pixels² are discarded. `RETR_LIST` returns outer boundaries and holes without hierarchical relationships [6]. Area and perimeter are measured with `contourArea` and `arcLength` [6]. Figure 10 uses a unique visible colour for every contour; Table 7 summarizes measurements. Individual measurements are available in [contours.csv](https://github.com/TrymJohnsen/Image-Processing-Scene-Analysis/blob/main/results/contour/contours.csv).
+Contour detection traces boundaries after grayscale threshold or edge processing [1]. We use Otsu thresholding after 5 × 5 Gaussian smoothing on the same four images used for blobs. Pixels above the threshold become white and others black. OpenCV's `findContours` uses `RETR_LIST` and `CHAIN_APPROX_NONE`; contours smaller than 15 pixels² are discarded. `RETR_LIST` returns outer boundaries and holes without hierarchical relationships [6]. Area and perimeter are measured with `contourArea` and `arcLength` [6]. Figure 10 uses a unique visible colour for every contour; Table 7 summarizes measurements.
 
 *Table 7. Baseline contour statistics. Areas are in pixels² and perimeters in pixels.*
 
